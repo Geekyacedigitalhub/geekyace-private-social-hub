@@ -9,11 +9,15 @@
 - [x] Architecture notes
 
 ## Milestone 2 — Data + Authentication
-- [ ] Supabase project
-- [ ] Auth
-- [ ] RLS
-- [ ] Core schema
+- [x] Select database replacement
+- [x] Neon-compatible database layer
+- [x] Core schema
+- [ ] Create Neon project
+- [ ] Configure Neon Auth
+- [ ] Connect DATABASE_URL
+- [ ] Run migrations
 - [ ] Private single-user access
+- [ ] Authorization checks
 
 ## Milestone 3 — Provider Layer
 - [ ] Provider interface
