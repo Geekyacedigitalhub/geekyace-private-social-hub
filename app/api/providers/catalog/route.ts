@@ -29,12 +29,14 @@ export async function POST() {
         enabled: true,
       }).returning();
       providerRow = inserted[0];
+      if (!providerRow) throw new Error("Provider record could not be created.");
     } else if (!providerRow.enabled || providerRow.baseUrl !== baseUrl) {
       const updated = await db.update(providers)
         .set({ baseUrl, enabled: true })
         .where(eq(providers.id, providerRow.id))
         .returning();
       providerRow = updated[0];
+      if (!providerRow) throw new Error("Provider record could not be updated.");
     }
 
     let imported = 0;
@@ -52,6 +54,7 @@ export async function POST() {
           enabled: true,
         }).returning();
         platformRow = inserted[0];
+        if (!platformRow) throw new Error("Platform record could not be created.");
       }
 
       const serviceSlug = (remote.name + "-" + remote.id).toLowerCase()
@@ -70,6 +73,7 @@ export async function POST() {
           enabled: true,
         }).returning();
         serviceRow = inserted[0];
+        if (!serviceRow) throw new Error("Service record could not be created.");
       } else {
         const updated = await db.update(services).set({
           platformId: platformRow.id,
@@ -80,6 +84,7 @@ export async function POST() {
           description: remote.type ? String(remote.type) : serviceRow.description,
         }).where(eq(services.id, serviceRow.id)).returning();
         serviceRow = updated[0];
+        if (!serviceRow) throw new Error("Service record could not be updated.");
       }
 
       const existingMapping = (await db.select().from(providerServices)
