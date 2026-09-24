@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { platforms, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function POST() {
-  const session = await auth.getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const baseUrl = process.env.PROVIDER_API_BASE_URL ?? "https://app.smmpanel.ng/api/v2";
   const apiKey = process.env.PROVIDER_API_KEY;
 
