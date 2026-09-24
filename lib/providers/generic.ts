@@ -19,7 +19,7 @@ export class GenericPanelProvider implements ProviderAdapter {
   private readonly timeoutMs: number;
 
   constructor(config: GenericProviderConfig) {
-    this.baseUrl = config.baseUrl.replace(/\\/$/, "");
+    this.baseUrl = config.baseUrl.replace(/\/$/, "");
     this.apiKey = config.apiKey;
     this.timeoutMs = config.timeoutMs ?? 15000;
   }
