@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { Globe2, Plus, ToggleRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { platforms } from "@/lib/db/schema";
