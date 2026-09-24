@@ -12,12 +12,12 @@
 - [x] Select database replacement
 - [x] Neon-compatible database layer
 - [x] Core schema
-- [ ] Create Neon project
-- [ ] Configure Neon Auth
+- [x] Create Neon project
+- [x] Configure Neon Auth
 - [ ] Connect DATABASE_URL
 - [ ] Run migrations
-- [ ] Private single-user access
-- [ ] Authorization checks
+- [x] Private single-user access
+- [x] Authorization checks
 
 ## Milestone 3 — Provider Layer
 - [ ] Provider interface
