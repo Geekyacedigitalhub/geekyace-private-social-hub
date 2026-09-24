@@ -18,6 +18,11 @@ export const config = {
     "/settings/:path*",
     "/new-order/:path*",
     "/api/orders/:path*",
+    "/api/services/:path*",
     "/api/providers/:path*",
+    "/api/refills/:path*",
+    "/api/analytics/:path*",
+    "/api/logs/:path*",
+    "/api/settings/:path*",
   ],
 };
