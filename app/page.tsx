@@ -94,7 +94,7 @@ export default function HomePage() {
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">System status</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Foundation is ready for the provider and order layers.
+                      Authentication and the provider foundation are ready for the next build step.
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -106,9 +106,9 @@ export default function HomePage() {
                 <div className="mt-6 grid gap-3">
                   {[
                     ["Application shell", "Ready"],
-                    ["Private access model", "Planned"],
-                    ["Provider adapter layer", "Next milestone"],
-                    ["Order database", "Next milestone"],
+                    ["Private access model", "Ready"],
+                    ["Provider adapter layer", "Ready"],
+                    ["Order database", "Ready"],
                   ].map(([label, status]) => (
                     <div
                       key={label}
@@ -125,7 +125,7 @@ export default function HomePage() {
                 <Sparkles size={20} />
                 <h2 className="mt-4 text-lg font-bold">Next milestone</h2>
                 <p className="mt-2 text-sm leading-6 text-emerald-50">
-                  Add the provider catalog, service mapping, order records, and secure server-side API routing.
+                  Build the provider catalog, service mapping, order records, and secure server-side API routing.
                 </p>
                 <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold">
                   Provider architecture
