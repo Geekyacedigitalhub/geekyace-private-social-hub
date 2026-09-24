@@ -1,142 +1,26 @@
-import {
-  Activity,
-  ArrowUpRight,
-  CheckCircle2,
-  CircleDollarSign,
-  Layers3,
-  ShieldCheck,
-  ShoppingCart,
-  Sparkles,
-} from "lucide-react";
+"use client";
 
-const stats = [
-  { label: "Orders", value: "0", icon: ShoppingCart },
-  { label: "Active", value: "0", icon: Activity },
-  { label: "Completed", value: "0", icon: CheckCircle2 },
-  { label: "Providers", value: "0", icon: Layers3 },
-];
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Activity, BarChart3, ClipboardList, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 
-export default function HomePage() {
-  return (
-    <main className="min-h-screen">
-      <div className="mx-auto flex min-h-screen max-w-7xl">
-        <aside className="hidden w-64 border-r border-emerald-100 bg-white p-5 lg:block">
-          <div className="mb-8">
-            <div className="text-lg font-bold text-emerald-700">GeekyAce</div>
-            <div className="text-xs text-slate-500">Private Social Hub</div>
-          </div>
+type Stats={totalOrders:number;activeOrders:number;completedOrders:number;failedOrders:number;refillRecords:number;events:number;totalQuantity:number};
+type Settings={privateMode:boolean;ownerEmailConfigured:boolean;providerConfigured:boolean;syncConfigured:boolean;environment:string};
 
-          <nav className="space-y-1 text-sm">
-            {Object.entries({"Dashboard":"/","New Order":"/new-order","Orders":"/orders","Services":"/services","Platforms":"/platforms","Providers":"/providers","Refills":"/refills","Analytics":"/analytics","Logs":"/logs","Settings":"/settings"}).map(([item, href], index) => (
-              <Link
-                key={item}
-                href={href}
-                className={`block rounded-lg px-3 py-2.5 ${index === 0 ? "bg-emerald-50 font-semibold text-emerald-700" : "text-slate-600 hover:bg-slate-50"}`}
-              >
-                {item}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-8 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-              <ShieldCheck size={16} />
-              Private mode
-            </div>
-            <p className="mt-2 text-xs leading-5 text-emerald-900/70">
-              Single-user panel. Provider secrets stay server-side.
-            </p>
-          </div>
-        </aside>
-
-        <section className="flex-1">
-          <header className="border-b border-slate-200 bg-white px-5 py-5 sm:px-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium text-emerald-600">Control center</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-                  Private Social Hub
-                </h1>
-              </div>
-              <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
-                <ShoppingCart size={16} />
-                New order
-              </button>
-            </div>
-          </header>
-
-          <div className="space-y-6 p-5 sm:p-8">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map(({ label, value, icon: Icon }) => (
-                <div key={label} className="rounded-xl border border-slate-200 bg-white p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-500">{label}</span>
-                    <Icon size={18} className="text-emerald-600" />
-                  </div>
-                  <div className="mt-3 text-3xl font-bold text-slate-900">{value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
-              <section className="rounded-xl border border-slate-200 bg-white p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">System status</h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Authentication and the provider foundation are ready for the next build step.
-                    </p>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    <CheckCircle2 size={14} />
-                    Ready
-                  </span>
-                </div>
-
-                <div className="mt-6 grid gap-3">
-                  {[
-                    ["Application shell", "Ready"],
-                    ["Private access model", "Ready"],
-                    ["Provider adapter layer", "Ready"],
-                    ["Order database", "Ready"],
-                  ].map(([label, status]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3"
-                    >
-                      <span className="text-sm text-slate-700">{label}</span>
-                      <span className="text-xs font-semibold text-slate-500">{status}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-xl border border-emerald-100 bg-emerald-700 p-6 text-white">
-                <Sparkles size={20} />
-                <h2 className="mt-4 text-lg font-bold">Next milestone</h2>
-                <p className="mt-2 text-sm leading-6 text-emerald-50">
-                  Build the provider catalog, service mapping, order records, and secure server-side API routing.
-                </p>
-                <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold">
-                  Provider architecture
-                  <ArrowUpRight size={16} />
-                </div>
-              </section>
-            </div>
-
-            <section className="rounded-xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center gap-2">
-                <CircleDollarSign size={18} className="text-emerald-600" />
-                <h2 className="text-lg font-bold text-slate-900">Cost approach</h2>
-              </div>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                The application is being designed around free-tier hosting and database resources.
-                Any third-party fulfillment provider may charge separately for its own services.
-              </p>
-            </section>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
+export default function Dashboard(){
+ const [stats,setStats]=useState<Stats|null>(null);
+ const [settings,setSettings]=useState<Settings|null>(null);
+ const load=async()=>{const [a,b]=await Promise.all([fetch("/api/analytics",{cache:"no-store"}),fetch("/api/settings",{cache:"no-store"})]);setStats(await a.json());setSettings(await b.json());};
+ useEffect(()=>{void load();},[]);
+ const cards=stats?[["Total orders",stats.totalOrders],["Active",stats.activeOrders],["Completed",stats.completedOrders],["Failed",stats.failedOrders]]:[];
+ return <main className="min-h-screen bg-slate-50"><div className="mx-auto max-w-7xl p-5 sm:p-8">
+  <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-semibold text-emerald-600">GeekyAce Private Social Hub</p><h1 className="mt-1 text-3xl font-bold text-slate-900">Control panel</h1><p className="mt-1 text-sm text-slate-500">Private provider-backed order management.</p></div><div className="flex gap-2"><Link href="/new-order" className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16}/> New order</Link><button onClick={()=>void load()} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"><RefreshCw size={16}/> Refresh</button></div></header>
+  <nav className="mt-6 flex flex-wrap gap-2">{[["Orders","/orders"],["Services","/services"],["Platforms","/platforms"],["Providers","/providers"],["Refills","/refills"],["Analytics","/analytics"],["Logs","/logs"],["Settings","/settings"]].map(([name,href])=><Link key={href} href={href} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:border-emerald-200 hover:text-emerald-700">{name}</Link>)}</nav>
+  <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,value])=><div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-xs font-medium uppercase text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold text-slate-900">{value}</p></div>)}</section>
+  <section className="mt-6 grid gap-5 lg:grid-cols-3">
+   <div className="rounded-xl border border-slate-200 bg-white p-5 lg:col-span-2"><div className="flex items-center gap-3"><BarChart3 className="text-emerald-600"/><div><h2 className="font-semibold text-slate-900">Operational overview</h2><p className="text-xs text-slate-500">Live database metrics.</p></div></div><div className="mt-5 grid gap-4 sm:grid-cols-3"><div><p className="text-xs text-slate-500">Total quantity</p><p className="mt-1 text-xl font-bold">{stats?.totalQuantity?.toLocaleString()??"—"}</p></div><div><p className="text-xs text-slate-500">Refill records</p><p className="mt-1 text-xl font-bold">{stats?.refillRecords??"—"}</p></div><div><p className="text-xs text-slate-500">Events</p><p className="mt-1 text-xl font-bold">{stats?.events??"—"}</p></div></div></div>
+   <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-3"><ShieldCheck className="text-emerald-600"/><div><h2 className="font-semibold text-slate-900">System status</h2><p className="text-xs text-slate-500">Configuration readiness.</p></div></div><div className="mt-4 space-y-3">{[["Private access",settings?.privateMode],["Owner allowlist",settings?.ownerEmailConfigured],["Provider",settings?.providerConfigured],["Auto sync",settings?.syncConfigured]].map(([label,ready])=><div key={String(label)} className="flex items-center justify-between text-sm"><span className="text-slate-600">{label}</span><span className={ready?"font-semibold text-emerald-700":"font-semibold text-amber-700"}>{ready?"Ready":"Pending"}</span></div>)}</div></div>
+  </section>
+  <section className="mt-5 grid gap-4 sm:grid-cols-3"><Link href="/orders" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-emerald-200"><ClipboardList className="text-emerald-600"/><p className="mt-3 font-semibold">Manage orders</p><p className="mt-1 text-sm text-slate-500">Review status and provider progress.</p></Link><Link href="/providers" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-emerald-200"><Activity className="text-emerald-600"/><p className="mt-3 font-semibold">Provider health</p><p className="mt-1 text-sm text-slate-500">Test connectivity and monitor balance.</p></Link><Link href="/settings" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-emerald-200"><ShieldCheck className="text-emerald-600"/><p className="mt-3 font-semibold">Security status</p><p className="mt-1 text-sm text-slate-500">Review private deployment configuration.</p></Link></section>
+ </div></main>;
 }
