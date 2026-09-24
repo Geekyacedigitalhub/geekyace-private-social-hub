@@ -1,4 +1,5 @@
 import { Activity, KeyRound, Plus, ServerCog } from "lucide-react";
+import { ProviderTest } from "./provider-test";
 
 const providers = [
   { name: "No provider configured", url: "Add a provider API endpoint and server-side credential.", status: "Not configured" },
@@ -32,7 +33,7 @@ export default function ProvidersPage() {
                 <h2 className="font-semibold text-slate-900">{provider.name}</h2>
                 <p className="mt-1 text-sm text-slate-500">{provider.url}</p>
               </div>
-              <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{provider.status}</span>
+              <div><span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{provider.status}</span><ProviderTest /></div>
             </div>
           ))}
         </section>
