@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import "@neondatabase/auth-ui/css";
 import "./globals.css";
-import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "GeekyAce Private Social Hub",
@@ -15,9 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
