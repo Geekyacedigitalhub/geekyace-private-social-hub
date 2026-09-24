@@ -28,8 +28,8 @@ export async function POST() {
       await db.insert(providerHealth).values({
         providerId: providerRow.id,
         status: "healthy",
-        latencyMs,
-        lastCheckedAt: new Date(),
+        responseTimeMs: latencyMs,
+        checkedAt: new Date(),
       });
       await db.insert(providerBalanceSnapshots).values({
         providerId: providerRow.id,
