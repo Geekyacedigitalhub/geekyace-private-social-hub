@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -74,5 +74,16 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create order.";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
+  }
+}
+
+
+export async function GET() {
+  try {
+    const rows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(200);
+    return NextResponse.json({ orders: rows });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load orders.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
