@@ -12,8 +12,8 @@
     "db:check": "drizzle-kit check"
   },
   "dependencies": {
-    "@neondatabase/auth": "^0.2.0",
-    "@neondatabase/auth-ui": "^0.2.0",
+    "@neondatabase/auth": "0.5.0-beta",
+    "@neondatabase/auth-ui": "0.3.0-beta",
     "@neondatabase/serverless": "^1.0.2",
     "drizzle-orm": "^0.44.5",
     "lucide-react": "^0.468.0",
