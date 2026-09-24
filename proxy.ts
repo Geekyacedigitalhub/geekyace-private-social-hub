@@ -1,7 +1,21 @@
 import { auth } from "@/lib/auth/server";
 
-export default auth.middleware({ loginUrl: "/auth/sign-in" });
+export default auth.middleware({
+  loginUrl: "/auth/sign-in",
+});
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/",
+    "/dashboard/:path*",
+    "/orders/:path*",
+    "/services/:path*",
+    "/platforms/:path*",
+    "/providers/:path*",
+    "/refills/:path*",
+    "/analytics/:path*",
+    "/logs/:path*",
+    "/settings/:path*",
+    "/api/orders/:path*",
+  ],
 };
