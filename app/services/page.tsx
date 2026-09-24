@@ -1,26 +1,31 @@
+import { desc, eq } from "drizzle-orm";
 import { Layers3, Search } from "lucide-react";
+import { db } from "@/lib/db";
+import { platforms, services } from "@/lib/db/schema";
 
-const services = [
-  ["Instagram", "Followers", "Provider mapping required"],
-  ["Instagram", "Likes", "Provider mapping required"],
-  ["TikTok", "Followers", "Provider mapping required"],
-  ["TikTok", "Views", "Provider mapping required"],
-  ["YouTube", "Subscribers", "Provider mapping required"],
-  ["YouTube", "Views", "Provider mapping required"],
-  ["Facebook", "Page Followers", "Provider mapping required"],
-  ["X", "Followers", "Provider mapping required"],
-  ["LinkedIn", "Followers", "Provider mapping required"],
-  ["Telegram", "Channel Members", "Provider mapping required"],
-];
+export const dynamic = "force-dynamic";
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const rows = await db
+    .select({
+      id: services.id,
+      platform: platforms.name,
+      name: services.name,
+      min: services.minQuantity,
+      max: services.maxQuantity,
+      enabled: services.enabled,
+    })
+    .from(services)
+    .innerJoin(platforms, eq(services.platformId, platforms.id))
+    .orderBy(desc(services.createdAt));
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-7xl p-5 sm:p-8">
         <header>
           <p className="text-sm font-medium text-emerald-600">Catalog</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">Services</h1>
-          <p className="mt-1 text-sm text-slate-500">Define the private services and connect each one to an approved provider mapping.</p>
+          <p className="mt-1 text-sm text-slate-500">Provider services mapped into the private ordering catalog.</p>
         </header>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
@@ -31,16 +36,23 @@ export default function ServicesPage() {
         </div>
 
         <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="grid grid-cols-[1.2fr_1fr_1.4fr] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <span>Platform</span><span>Service</span><span>Mapping</span>
+          <div className="grid grid-cols-[1.1fr_1.7fr_0.8fr_0.8fr] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span>Platform</span><span>Service</span><span>Minimum</span><span>Maximum</span>
           </div>
-          {services.map(([platform, service, mapping]) => (
-            <div key={platform + service} className="grid grid-cols-[1.2fr_1fr_1.4fr] gap-4 border-b border-slate-100 px-5 py-4 text-sm last:border-0">
-              <span className="font-medium text-slate-800">{platform}</span>
-              <span className="text-slate-700">{service}</span>
-              <span className="text-xs font-medium text-amber-700">{mapping}</span>
+          {rows.length ? rows.map((service) => (
+            <div key={service.id} className="grid grid-cols-[1.1fr_1.7fr_0.8fr_0.8fr] gap-4 border-b border-slate-100 px-5 py-4 text-sm last:border-0">
+              <span className="font-medium text-slate-800">{service.platform}</span>
+              <span className="text-slate-700">{service.name}</span>
+              <span className="text-slate-600">{service.min}</span>
+              <span className="text-slate-600">{service.max}</span>
             </div>
-          ))}
+          )) : (
+            <div className="p-10 text-center">
+              <Layers3 className="mx-auto text-emerald-600" size={26} />
+              <h2 className="mt-3 font-semibold text-slate-900">No services imported yet</h2>
+              <p className="mt-2 text-sm text-slate-500">Sync the provider catalog from the Providers page first.</p>
+            </div>
+          )}
         </section>
       </div>
     </main>
