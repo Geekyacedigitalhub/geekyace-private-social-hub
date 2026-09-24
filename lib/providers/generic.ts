@@ -1,0 +1,152 @@
+import type {
+  ProviderAdapter,
+  ProviderBalance,
+  ProviderOrderRequest,
+  ProviderOrderResponse,
+  ProviderOrderStatus,
+  ProviderService,
+} from "./types";
+
+type GenericProviderConfig = {
+  baseUrl: string;
+  apiKey: string;
+  timeoutMs?: number;
+};
+
+export class GenericPanelProvider implements ProviderAdapter {
+  private readonly baseUrl: string;
+  private readonly apiKey: string;
+  private readonly timeoutMs: number;
+
+  constructor(config: GenericProviderConfig) {
+    this.baseUrl = config.baseUrl.replace(/\\/$/, "");
+    this.apiKey = config.apiKey;
+    this.timeoutMs = config.timeoutMs ?? 15000;
+  }
+
+  private async request<T>(body: Record<string, string | number>): Promise<T> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: new URLSearchParams({
+          key: this.apiKey,
+          ...Object.fromEntries(
+            Object.entries(body).map(([key, value]) => [key, String(value)]),
+          ),
+        }).toString(),
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Provider returned HTTP ${response.status}`);
+      }
+
+      return (await response.json()) as T;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async getServices(): Promise<ProviderService[]> {
+    const result = await this.request<unknown>({ action: "services" });
+    if (!Array.isArray(result)) return [];
+
+    return result.map((item) => {
+      const service = item as Record<string, unknown>;
+      return {
+        id: String(service.service ?? ""),
+        name: String(service.name ?? ""),
+        category: service.category ? String(service.category) : undefined,
+        type: service.type ? String(service.type) : undefined,
+        rate: typeof service.rate === "number" ? service.rate : Number(service.rate ?? 0),
+        min: Number(service.min ?? 0),
+        max: Number(service.max ?? 0),
+        refill: Boolean(service.refill),
+        cancel: Boolean(service.cancel),
+        raw: service,
+      };
+    });
+  }
+
+  async getBalance(): Promise<ProviderBalance> {
+    const result = await this.request<Record<string, unknown>>({ action: "balance" });
+    return {
+      balance: Number(result.balance ?? 0),
+      currency: String(result.currency ?? "USD"),
+      raw: result,
+    };
+  }
+
+  async createOrder(request: ProviderOrderRequest): Promise<ProviderOrderResponse> {
+    const result = await this.request<Record<string, unknown>>({
+      action: "add",
+      service: request.serviceId,
+      link: request.target,
+      quantity: request.quantity,
+    });
+
+    const providerOrderId = String(result.order ?? "");
+    if (!providerOrderId) {
+      throw new Error("Provider did not return an order ID");
+    }
+
+    return { providerOrderId, raw: result };
+  }
+
+  async getOrderStatus(providerOrderId: string): Promise<ProviderOrderStatus> {
+    const result = await this.request<Record<string, unknown>>({
+      action: "status",
+      order: providerOrderId,
+    });
+
+    return {
+      status: normalizeStatus(result.status),
+      startCount: toOptionalNumber(result.start_count),
+      currentCount: toOptionalNumber(result.current_count),
+      completedQuantity: toOptionalNumber(result.completed),
+      remains: toOptionalNumber(result.remains),
+      raw: result,
+    };
+  }
+
+  async cancelOrder(providerOrderId: string): Promise<unknown> {
+    return this.request({
+      action: "cancel",
+      orders: providerOrderId,
+    });
+  }
+
+  async getRefillStatus(refillId: string): Promise<unknown> {
+    return this.request({
+      action: "refill_status",
+      refill: refillId,
+    });
+  }
+}
+
+function toOptionalNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function normalizeStatus(value: unknown): ProviderOrderStatus["status"] {
+  const status = String(value ?? "").toLowerCase();
+
+  if (status.includes("cancel")) return "cancelled";
+  if (status.includes("partial")) return "partial";
+  if (status.includes("complete")) return "completed";
+  if (status.includes("process") || status.includes("progress")) return "processing";
+  if (status.includes("fail") || status.includes("error")) return "failed";
+  if (status.includes("pending") || status.includes("await")) return "pending";
+
+  return "unknown";
+}
