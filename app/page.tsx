@@ -27,24 +27,14 @@ export default function HomePage() {
           </div>
 
           <nav className="space-y-1 text-sm">
-            {[
-              "Dashboard",
-              "New Order",
-              "Orders",
-              "Services",
-              "Platforms",
-              "Providers",
-              "Refills",
-              "Analytics",
-              "Logs",
-              "Settings",
-            ].map((item, index) => (
-              <div
+            {Object.entries({"Dashboard":"/","New Order":"/new-order","Orders":"/orders","Services":"/services","Platforms":"/platforms","Providers":"/providers","Refills":"/refills","Analytics":"/analytics","Logs":"/logs","Settings":"/settings"}).map(([item, href], index) => (
+              <Link
                 key={item}
-                className={`rounded-lg px-3 py-2.5 ${index === 0 ? "bg-emerald-50 font-semibold text-emerald-700" : "text-slate-600"}`}
+                href={href}
+                className={`block rounded-lg px-3 py-2.5 ${index === 0 ? "bg-emerald-50 font-semibold text-emerald-700" : "text-slate-600 hover:bg-slate-50"}`}
               >
                 {item}
-              </div>
+              </Link>
             ))}
           </nav>
 
