@@ -17,13 +17,18 @@ async function recordSyncEvent(orderId: string, eventType: string, message: stri
 
   if (recent.length > 0) return false;
 
-  await db.insert(orderEvents).values({
-    orderId,
-    eventType,
-    message,
-    ...(payload ? { payload } : {}),
-  });
-  return true;
+  try {
+    await db.insert(orderEvents).values({
+      orderId,
+      eventType,
+      message,
+      ...(payload ? { payload } : {}),
+    });
+    return true;
+  } catch (error) {
+    console.error("Automatic sync event logging failed:", error);
+    return false;
+  }
 }
 
 export async function POST(request: Request) {
