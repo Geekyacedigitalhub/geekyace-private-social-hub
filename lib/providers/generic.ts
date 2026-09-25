@@ -70,8 +70,6 @@ export class GenericPanelProvider implements ProviderAdapter {
         !Number.isSafeInteger(min) ||
         !Number.isSafeInteger(max) ||
         !Number.isFinite(rate) ||
-        !Number.isSafeInteger(min) ||
-        !Number.isSafeInteger(max) ||
         !id ||
         !name ||
         id.length > 256 ||
@@ -187,7 +185,7 @@ function toNumber(value: unknown) {
 function toOptionalNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return undefined;
   const number = Number(value);
-  return Number.isFinite(number) ? number : undefined;
+  return Number.isSafeInteger(number) && number >= 0 ? number : undefined;
 }
 
 function normalizeStatus(value: unknown): ProviderOrderStatus["status"] {
