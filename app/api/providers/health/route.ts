@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 export async function GET() {
   try {
@@ -13,7 +14,9 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const limited = rateLimit(request, "provider-health", 10);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const providerName = process.env.PROVIDER_NAME ?? "Configured provider";
   const baseUrl = process.env.PROVIDER_API_BASE_URL ?? "";
   const apiKey = process.env.PROVIDER_API_KEY ?? "";
