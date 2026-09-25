@@ -41,9 +41,11 @@ export async function POST() {
 
     let imported = 0;
     for (const remote of remoteServices) {
-      if (!remote.id || !remote.name || !remote.min || !remote.max) continue;
+      if (!remote.id || !remote.name || !Number.isFinite(remote.min) || !Number.isFinite(remote.max) || remote.min <= 0 || remote.max < remote.min) {
+        continue;
+      }
 
-      const platformName = remote.category?.trim() || "Other";
+      const platformName = inferPlatformName(remote.category, remote.name);
       const platformSlug = platformName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "other";
 
       let platformRow = (await db.select().from(platforms).where(eq(platforms.slug, platformSlug))).at(0);
@@ -123,4 +125,33 @@ export async function POST() {
     const message = error instanceof Error ? error.message : "Catalog sync failed.";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
+}
+
+
+
+function inferPlatformName(category?: string, serviceName?: string) {
+  const value = `${category ?? ""} ${serviceName ?? ""}`.toLowerCase();
+  const platforms = [
+    ["instagram", "Instagram"],
+    ["tiktok", "TikTok"],
+    ["youtube", "YouTube"],
+    ["facebook", "Facebook"],
+    ["twitter", "X"],
+    [" x ", "X"],
+    ["linkedin", "LinkedIn"],
+    ["threads", "Threads"],
+    ["telegram", "Telegram"],
+    ["discord", "Discord"],
+    ["reddit", "Reddit"],
+    ["twitch", "Twitch"],
+    ["pinterest", "Pinterest"],
+    ["spotify", "Spotify"],
+    ["snapchat", "Snapchat"],
+  ] as const;
+
+  for (const [needle, label] of platforms) {
+    if (value.includes(needle)) return label;
+  }
+
+  return category?.trim() || "Other";
 }
