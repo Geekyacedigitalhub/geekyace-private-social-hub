@@ -17,7 +17,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "refill-create", 10);
-    if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
@@ -60,7 +60,14 @@ export async function POST(request: Request) {
       requestedAt: new Date(),
     }).returning()).at(0);
 
-    await db.insert(orderEvents).values({\n      orderId: order.id,\n      eventType: "refill_requested",\n      message: "Refill request submitted to upstream provider.",\n      payload: { providerRefillId: created.providerRefillId },\n    });\n\n    return NextResponse.json({ ok: true, refill: inserted });
+    await db.insert(orderEvents).values({
+      orderId: order.id,
+      eventType: "refill_requested",
+      message: "Refill request submitted to upstream provider.",
+      payload: { providerRefillId: created.providerRefillId },
+    });
+
+    return NextResponse.json({ ok: true, refill: inserted });
   } catch (error) {
     console.error("Refill request failed:", error);
     return NextResponse.json({ ok: false, error: "Refill request failed." }, { status: 502 });
