@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const provider=createProviderAdapter({name:providerRow.name,baseUrl:providerRow.baseUrl,apiKey:process.env.PROVIDER_API_KEY??""});
     const status=await provider.getOrderStatus(order.providerOrderId);
     const terminal=new Set(["completed","failed","cancelled"]);
-    const nextStatus=status.status==="unknown"?order.status:terminal.has(order.status)&&!terminal.has(status.status)?order.status:status.status;
+    const nextStatus=status.status==="unknown"||terminal.has(order.status)&&order.status!==status.status?order.status:status.status;
     const changed=nextStatus!==order.status||status.startCount!==order.startCount||status.currentCount!==order.currentCount||status.completedQuantity!==order.completedQuantity||status.remains!==order.remains;
     const updated=(await db.update(orders).set({status:nextStatus,startCount:status.startCount,currentCount:status.currentCount,completedQuantity:status.completedQuantity,remains:status.remains,updatedAt:new Date()}).where(eq(orders.id,order.id)).returning()).at(0);
     if(changed){try{await db.insert(orderEvents).values({orderId:order.id,eventType:"status_check",message:"Provider status changed.",payload:{providerStatus:status.status}});}catch(eventError){console.error("Order status event logging failed:",eventError);}}
