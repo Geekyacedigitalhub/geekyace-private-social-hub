@@ -224,7 +224,7 @@ function inferServiceType(category?: string, serviceName?: string, providerType?
     ["review", "reviews"],
     ["rating", "ratings"],
     ["traffic", "traffic"],
-    ["impression", "impressions"];
+    ["impression", "impressions"],
   ] as const;
 
   for (const [needle, type] of matchers) {
