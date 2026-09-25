@@ -1,4 +1,22 @@
 "use client";
-import Link from "next/link"; import {useEffect,useState} from "react"; import {ArrowUpRight,BarChart3,TrendingUp} from "lucide-react";
-type Stats={totalOrders:number;activeOrders:number;completedOrders:number;failedOrders:number;refillRecords:number;events:number;totalQuantity:number};
-export default function AnalyticsPage(){const[s,setS]=useState<Stats|null>(null);useEffect(()=>{fetch("/api/analytics",{cache:"no-store"}).then(r=>r.json()).then(setS).catch(()=>setS(null))},[]);const cards=s?[["Total orders",s.totalOrders],["Active",s.activeOrders],["Completed",s.completedOrders],["Failed",s.failedOrders],["Refill records",s.refillRecords],["Order events",s.events],["Quantity processed",s.totalQuantity]]:[];return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10"><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><header className="mt-6 flex items-end justify-between gap-4"><div><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><TrendingUp size={13}/> Intelligence</div><h1 className="mt-2 text-3xl font-semibold text-white">Analytics</h1><p className="mt-2 text-sm text-slate-500">Live operational metrics from the private workspace.</p></div><BarChart3 className="hidden text-emerald-400/40 sm:block" size={34}/></header><section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,value],i)=><div key={String(label)} className="gx-card gx-card-hover rounded-2xl p-5"><div className="flex justify-between"><span className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-600">{String(label)}</span><ArrowUpRight size={14} className="text-slate-700"/></div><p className="mt-7 text-3xl font-semibold text-white">{typeof value==="number"?value.toLocaleString():value}</p><div className="mt-4 h-1.5 rounded-full bg-white/[0.05]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300" style={{width:(30+(i*9))+"%"}}/></div></div>)}</section></div></main>}
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowUpRight, BarChart3, TrendingUp } from "lucide-react";
+
+type Stats = { totalOrders:number; activeOrders:number; completedOrders:number; failedOrders:number; refillRecords:number; events:number; totalQuantity:number };
+
+export default function AnalyticsPage(){
+  const [s,setS]=useState<Stats|null>(null);
+  useEffect(()=>{fetch("/api/analytics",{cache:"no-store"}).then(r=>r.json()).then(setS).catch(()=>setS(null))},[]);
+  const cards=useMemo(()=>s?[
+    ["Total orders",s.totalOrders,100],
+    ["Active",s.activeOrders,s.totalOrders?Math.round(s.activeOrders/s.totalOrders*100):0],
+    ["Completed",s.completedOrders,s.totalOrders?Math.round(s.completedOrders/s.totalOrders*100):0],
+    ["Failed",s.failedOrders,s.totalOrders?Math.round(s.failedOrders/s.totalOrders*100):0],
+    ["Refill records",s.refillRecords,s.totalOrders?Math.min(100,Math.round(s.refillRecords/s.totalOrders*100)):0],
+    ["Order events",s.events,s.totalOrders?Math.min(100,Math.round(s.events/Math.max(s.totalOrders,1)*10)):0],
+    ["Quantity processed",s.totalQuantity,s.totalQuantity?100:0]
+  ]:[],[s]);
+  return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10"><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><header className="mt-6 flex items-end justify-between gap-4"><div><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><TrendingUp size={13}/> Intelligence</div><h1 className="mt-2 text-3xl font-semibold text-white">Analytics</h1><p className="mt-2 text-sm text-slate-500">Live operational metrics from the private workspace.</p></div><BarChart3 className="hidden text-emerald-400/40 sm:block" size={34}/></header><section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,value,pct])=><div key={String(label)} className="gx-card gx-card-hover rounded-2xl p-5"><div className="flex justify-between"><span className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-600">{String(label)}</span><span className="text-[10px] font-bold text-slate-600">{Number(pct)}%</span></div><p className="mt-7 text-3xl font-semibold text-white">{typeof value==="number"?value.toLocaleString():value}</p><div className="mt-4 h-1.5 rounded-full bg-white/[0.05]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-all" style={{width:Number(pct)+"%"}}/></div></div>)}</section></div></main>
+}
