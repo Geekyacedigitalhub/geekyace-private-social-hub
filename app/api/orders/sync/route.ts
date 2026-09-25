@@ -5,6 +5,30 @@ import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
+const SYNC_CONCURRENCY = 5;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function run() {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => run()),
+  );
+  return results;
+}
+
 async function recordSyncEvent(orderId: string, eventType: string, message: string, payload?: Record<string, unknown>) {
   const since = new Date(Date.now() - 60 * 60 * 1000);
   const recent = await db.select({ id: orderEvents.id })
@@ -31,6 +55,17 @@ async function recordSyncEvent(orderId: string, eventType: string, message: stri
     return false;
   }
 }
+
+type OrderSyncResult = {
+  updated: boolean;
+  skippedProvider: boolean;
+  providerFailure: boolean;
+  unknownStatus: boolean;
+};
+
+type RefillSyncResult = {
+  updated: boolean;
+};
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "order-sync", 4);
@@ -63,12 +98,8 @@ export async function POST(request: Request) {
       return adapter;
     };
 
-    let updated = 0;
-    let skippedProvider = 0;
-    let providerFailures = 0;
-    let unknownStatuses = 0;
-    for (const order of active) {
-      if (!order.providerId) continue;
+    const orderResults = await mapWithConcurrency(active, SYNC_CONCURRENCY, async (order): Promise<OrderSyncResult> => {
+      if (!order.providerId) return { updated: false, skippedProvider: false, providerFailure: false, unknownStatus: false };
 
       let providerOrderId = order.providerOrderId;
       if (!providerOrderId) {
@@ -92,8 +123,6 @@ export async function POST(request: Request) {
 
         if (typeof recoveredId === "string" && recoveredId.trim() && recoveredId.length <= 256) {
           providerOrderId = recoveredId.trim();
-          // Only recover an ID while the order is still active. A concurrent
-          // status check may have finalized the order while we searched its events.
           const recovered = (await db.update(orders)
             .set({ status: "processing", providerOrderId, updatedAt: new Date() })
             .where(and(
@@ -102,10 +131,7 @@ export async function POST(request: Request) {
             ))
             .returning({ id: orders.id })).at(0);
 
-          // Another worker may have finalized the order while recovery was
-          // reading the submission event. Stop here rather than querying the
-          // provider with a stale active-order snapshot.
-          if (!recovered) continue;
+          if (!recovered) return { updated: false, skippedProvider: false, providerFailure: false, unknownStatus: false };
 
           try {
             await db.insert(orderEvents).values({
@@ -119,25 +145,22 @@ export async function POST(request: Request) {
         }
       }
 
-      if (!providerOrderId) continue;
+      if (!providerOrderId) return { updated: false, skippedProvider: false, providerFailure: false, unknownStatus: false };
       const providerRow = providerById.get(order.providerId);
       if (!providerRow?.enabled) {
-        skippedProvider++;
         await recordSyncEvent(order.id, "automatic_status_check_skipped", "Automatic synchronization skipped because the assigned provider is unavailable.");
-        continue;
+        return { updated: false, skippedProvider: true, providerFailure: false, unknownStatus: false };
       }
       const provider = getProviderAdapter(providerRow);
       let status;
       try {
         status = await provider.getOrderStatus(providerOrderId);
       } catch (providerError) {
-        providerFailures++;
         await recordSyncEvent(order.id, "automatic_status_check_failed", "Automatic provider status synchronization failed.", { error: "Provider request failed." });
-        continue;
+        return { updated: false, skippedProvider: false, providerFailure: true, unknownStatus: false };
       }
       if (status.status === "unknown") {
-        unknownStatuses++;
-        continue;
+        return { updated: false, skippedProvider: false, providerFailure: false, unknownStatus: true };
       }
 
       const nextStatus =
@@ -145,9 +168,6 @@ export async function POST(request: Request) {
           ? order.status
           : status.status;
 
-      // Only update orders that are still active. A concurrent manual status
-      // check can finalize an order while this provider request is in flight;
-      // never let a stale sync response overwrite that terminal state.
       const updatedOrder = (await db.update(orders).set({
         status: nextStatus,
         startCount: status.startCount,
@@ -160,10 +180,7 @@ export async function POST(request: Request) {
         inArray(orders.status, ["pending", "processing"]),
       )).returning({ id: orders.id })).at(0);
 
-      // A concurrent worker may have finalized the order while the provider
-      // request was in flight. Only report/log the synchronization if this
-      // update actually won the race.
-      if (!updatedOrder) continue;
+      if (!updatedOrder) return { updated: false, skippedProvider: false, providerFailure: false, unknownStatus: false };
 
       const changed = nextStatus !== order.status ||
         status.startCount !== order.startCount ||
@@ -183,10 +200,15 @@ export async function POST(request: Request) {
           console.error("Automatic status event logging failed:", eventError);
         }
       }
-      if (changed) updated++;
-    }
-    // Refill checks also update rows as they progress. Avoid offset pagination
-    // because changing rows between runs can shift later refills and cause skips.
+
+      return { updated: changed, skippedProvider: false, providerFailure: false, unknownStatus: false };
+    });
+
+    const updated = orderResults.filter((result) => result.updated).length;
+    const skippedProvider = orderResults.filter((result) => result.skippedProvider).length;
+    const providerFailures = orderResults.filter((result) => result.providerFailure).length;
+    const unknownStatuses = orderResults.filter((result) => result.unknownStatus).length;
+
     const activeRefills = await db
       .select()
       .from(refills)
@@ -198,52 +220,45 @@ export async function POST(request: Request) {
       ? await db.select().from(orders).where(inArray(orders.id, refillOrderIds))
       : [];
     const refillOrderById = new Map(refillOrders.map((order) => [order.id, order]));
-    let refillsUpdated = 0;
-
-    for (const refill of activeRefills) {
-      if (!refill.providerRefillId) continue;
+    const refillResults = await mapWithConcurrency(activeRefills, SYNC_CONCURRENCY, async (refill): Promise<RefillSyncResult> => {
+      if (!refill.providerRefillId) return { updated: false };
       const order = refillOrderById.get(refill.orderId);
-      if (!order?.providerId) continue;
+      if (!order?.providerId) return { updated: false };
       const providerRow = providerById.get(order.providerId);
-      if (!providerRow?.enabled) continue;
+      if (!providerRow?.enabled) return { updated: false };
 
       const provider = getProviderAdapter(providerRow);
-      if (!provider.getRefillStatus) continue;
+      if (!provider.getRefillStatus) return { updated: false };
 
       try {
         const raw = await provider.getRefillStatus(refill.providerRefillId);
         const providerStatus = normalizeRefillStatus(raw);
-        if (!providerStatus) continue;
+        if (!providerStatus) return { updated: false };
 
         const refillChanged = providerStatus !== refill.status;
-        if (refillChanged) {
-          // Do not let a stale provider response move a refill backward after
-          // another worker has already finalized it.
-          const updatedRefill = (await db.update(refills).set({
-            status: providerStatus,
-            completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
-          }).where(and(
-            eq(refills.id, refill.id),
-            inArray(refills.status, ["requested", "processing"]),
-          )).returning({ id: refills.id })).at(0);
+        if (!refillChanged) return { updated: false };
 
-          // Another worker may have finalized the refill while the provider
-          // request was in flight. Do not emit a stale change event or count
-          // an update that did not actually commit.
-          if (!updatedRefill) continue;
+        const updatedRefill = (await db.update(refills).set({
+          status: providerStatus,
+          completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
+        }).where(and(
+          eq(refills.id, refill.id),
+          inArray(refills.status, ["requested", "processing"]),
+        )).returning({ id: refills.id })).at(0);
 
-          try {
-            await db.insert(orderEvents).values({
-              orderId: refill.orderId,
-              eventType: "automatic_refill_status_check",
-              message: "Provider refill status changed.",
-              payload: { providerStatus, previousStatus: refill.status },
-            });
-          } catch (eventError) {
-            console.error("Automatic refill status event logging failed:", eventError);
-          }
-          refillsUpdated++;
+        if (!updatedRefill) return { updated: false };
+
+        try {
+          await db.insert(orderEvents).values({
+            orderId: refill.orderId,
+            eventType: "automatic_refill_status_check",
+            message: "Provider refill status changed.",
+            payload: { providerStatus, previousStatus: refill.status },
+          });
+        } catch (eventError) {
+          console.error("Automatic refill status event logging failed:", eventError);
         }
+        return { updated: true };
       } catch {
         await recordSyncEvent(
           refill.orderId,
@@ -251,8 +266,11 @@ export async function POST(request: Request) {
           "Automatic provider refill status synchronization failed.",
           { error: "Provider request failed." },
         );
+        return { updated: false };
       }
-    }
+    });
+
+    const refillsUpdated = refillResults.filter((result) => result.updated).length;
 
     return NextResponse.json({ ok: true, checked: active.length, updated, skippedProvider, providerFailures, unknownStatuses, refillsChecked: activeRefills.length, refillsUpdated }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
