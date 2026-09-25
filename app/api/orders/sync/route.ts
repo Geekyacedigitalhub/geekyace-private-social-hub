@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orderEvents, orders } from "@/lib/db/schema";
+import { orderEvents, orders, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function POST(request: Request) {
@@ -18,9 +18,19 @@ export async function POST(request: Request) {
     for (const order of active) {
       if (!order.providerOrderId || !order.providerId) continue;
 
+      const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
+      if (!providerRow?.enabled) {
+        await db.insert(orderEvents).values({
+          orderId: order.id,
+          eventType: "automatic_status_check_skipped",
+          message: "Automatic synchronization skipped because the assigned provider is unavailable.",
+        });
+        continue;
+      }
+
       const provider = createProviderAdapter({
-        name: order.providerId,
-        baseUrl: process.env.PROVIDER_API_BASE_URL ?? "",
+        name: providerRow.name,
+        baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
         apiKey: process.env.PROVIDER_API_KEY ?? "",
       });
 
