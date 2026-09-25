@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, count, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -46,6 +46,23 @@ export async function POST(request: Request) {
       .where(inArray(orders.status, ["pending", "processing"]))
       .orderBy(asc(orders.updatedAt))
       .limit(100);
+    // Cache provider configuration and adapters for the whole sync run.
+    // This removes one providers query and adapter construction per active order/refill.
+    const providerRows = await db.select().from(providers);
+    const providerById = new Map(providerRows.map((provider) => [provider.id, provider]));
+    const providerAdapterById = new Map<string, ReturnType<typeof createProviderAdapter>>();
+    const getProviderAdapter = (providerRow: typeof providerRows[number]) => {
+      const cached = providerAdapterById.get(providerRow.id);
+      if (cached) return cached;
+      const adapter = createProviderAdapter({
+        name: providerRow.name,
+        baseUrl: providerRow.baseUrl,
+        apiKey: process.env.PROVIDER_API_KEY ?? "",
+      });
+      providerAdapterById.set(providerRow.id, adapter);
+      return adapter;
+    };
+
     let updated = 0;
     let skippedProvider = 0;
     let providerFailures = 0;
@@ -103,13 +120,13 @@ export async function POST(request: Request) {
       }
 
       if (!providerOrderId) continue;
-      const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
+      const providerRow = providerById.get(order.providerId);
       if (!providerRow?.enabled) {
         skippedProvider++;
         await recordSyncEvent(order.id, "automatic_status_check_skipped", "Automatic synchronization skipped because the assigned provider is unavailable.");
         continue;
       }
-      const provider = createProviderAdapter({ name: providerRow.name, baseUrl: providerRow.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
+      const provider = getProviderAdapter(providerRow);
       let status;
       try {
         status = await provider.getOrderStatus(providerOrderId);
@@ -176,21 +193,21 @@ export async function POST(request: Request) {
       .where(inArray(refills.status, ["requested", "processing"]))
       .orderBy(asc(refills.createdAt))
       .limit(100);
+    const refillOrderIds = activeRefills.map((refill) => refill.orderId);
+    const refillOrders = refillOrderIds.length > 0
+      ? await db.select().from(orders).where(inArray(orders.id, refillOrderIds))
+      : [];
+    const refillOrderById = new Map(refillOrders.map((order) => [order.id, order]));
     let refillsUpdated = 0;
 
     for (const refill of activeRefills) {
       if (!refill.providerRefillId) continue;
-      const order = (await db.select().from(orders).where(eq(orders.id, refill.orderId))).at(0);
+      const order = refillOrderById.get(refill.orderId);
       if (!order?.providerId) continue;
-      const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
+      const providerRow = providerById.get(order.providerId);
       if (!providerRow?.enabled) continue;
 
-      const provider = createProviderAdapter({
-        name: providerRow.name,
-        baseUrl: providerRow.baseUrl,
-        apiKey: process.env.PROVIDER_API_KEY ?? "",
-      });
-
+      const provider = getProviderAdapter(providerRow);
       if (!provider.getRefillStatus) continue;
 
       try {
