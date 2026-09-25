@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { platforms, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     const seenExternalIds = new Set<string>();
     let imported = 0;
     for (const remote of remoteServices) {
-      if (!remote.id || !remote.name || !Number.isFinite(remote.min) || !Number.isFinite(remote.max) || remote.min <= 0 || remote.max < remote.min) continue;\n      if (seenExternalIds.has(remote.id)) continue;\n      seenExternalIds.add(remote.id);
+      if (!remote.id || !remote.name || !Number.isFinite(remote.min) || !Number.isFinite(remote.max) || remote.min <= 0 || remote.max < remote.min) continue;
+      if (seenExternalIds.has(remote.id)) continue;\n      seenExternalIds.add(remote.id);
       const platformName = inferPlatformName(remote.category, remote.name);
       const platformSlug = platformName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "other";
       let platformRow = (await db.select().from(platforms).where(eq(platforms.slug, platformSlug))).at(0);
