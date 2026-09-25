@@ -192,12 +192,22 @@ export async function POST(request: Request) {
 function inferPlatformName(category?: string, serviceName?: string) {
   const value = `${category ?? ""} ${serviceName ?? ""}`.toLowerCase();
   if (/(^|\\s)x(\\s|$)/.test(value)) return "X";
-  const platforms = [
-    ["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube"], ["facebook", "Facebook"],
-    ["twitter", "X"], ["linkedin", "LinkedIn"], ["threads", "Threads"], ["telegram", "Telegram"],
-    ["discord", "Discord"], ["reddit", "Reddit"], ["twitch", "Twitch"], ["pinterest", "Pinterest"],
-    ["spotify", "Spotify"], ["snapchat", "Snapchat"],
+  const platformMatchers = [
+    ["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube"],
+    ["facebook", "Facebook"], ["twitter", "X"], ["(^|\\\\s)x(\\\\s|$)", "X"],
+    ["linkedin", "LinkedIn"], ["threads", "Threads"], ["telegram", "Telegram"],
+    ["discord", "Discord"], ["reddit", "Reddit"], ["twitch", "Twitch"],
+    ["pinterest", "Pinterest"], ["spotify", "Spotify"], ["snapchat", "Snapchat"],
+    ["whatsapp", "WhatsApp"], ["soundcloud", "SoundCloud"], ["apple music", "Apple Music"],
+    ["applemusic", "Apple Music"], ["kick", "Kick"], ["quora", "Quora"],
+    ["tumblr", "Tumblr"], ["vk", "VK"], ["vimeo", "Vimeo"], ["dailymotion", "Dailymotion"],
+    ["google business", "Google Business"], ["google maps", "Google Business"],
+    ["business profile", "Google Business"], ["yelp", "Yelp"], ["patreon", "Patreon"],
+    ["onlyfans", "OnlyFans"], ["rumble", "Rumble"], ["likee", "Likee"],
+    ["kwai", "Kwai"], ["line", "LINE"], ["weibo", "Weibo"], ["douyin", "Douyin"],
+    ["bilibili", "Bilibili"], ["mixcloud", "Mixcloud"], ["steam", "Steam"],
+    ["roblox", "Roblox"], ["minecraft", "Minecraft"],
   ] as const;
-  for (const [needle, label] of platforms) if (value.includes(needle)) return label;
+  for (const [needle, label] of platformMatchers) {\n    if (needle.startsWith("(^|")) {\n      if (new RegExp(needle, "i").test(value)) return label;\n    } else if (value.includes(needle)) return label;\n  }
   return category?.trim() || "Other";
 }
