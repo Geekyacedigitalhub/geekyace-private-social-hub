@@ -135,6 +135,8 @@ export async function POST(request: Request) {
           if (!serviceRow) throw new Error("Service record could not be updated.");
         }
 
+        const serviceType = inferServiceType(remote.category, remote.name, remote.type);
+
         const values = {
           providerId: providerRow.id,
           serviceId: serviceRow.id,
@@ -147,6 +149,8 @@ export async function POST(request: Request) {
           metadata: {
             providerCategory: remote.category ?? null,
             providerType: remote.type ?? null,
+            platform: platformName,
+            serviceType,
             refillSupported: Boolean(remote.refill),
             cancelSupported: Boolean(remote.cancel),
           },
@@ -187,6 +191,37 @@ export async function POST(request: Request) {
     console.error("Provider catalog sync failed:", error);
     return NextResponse.json({ ok: false, error: "Catalog synchronization failed; existing catalog was preserved." }, { status: 502 });
   }
+}
+
+function inferServiceType(category?: string, serviceName?: string, providerType?: string) {
+  const value = `${category ?? ""} ${serviceName ?? ""} ${providerType ?? ""}`.toLowerCase();
+  const matchers = [
+    ["watch time", "watch_time"],
+    ["watchtime", "watch_time"],
+    ["live viewer", "live_viewers"],
+    ["live viewers", "live_viewers"],
+    ["story view", "story_views"],
+    ["story views", "story_views"],
+    ["profile visit", "profile_visits"],
+    ["profile visits", "profile_visits"],
+    ["subscriber", "subscribers"],
+    ["member", "members"],
+    ["follower", "followers"],
+    ["like", "likes"],
+    ["comment", "comments"],
+    ["share", "shares"],
+    ["save", "saves"],
+    ["reaction", "reactions"],
+    ["repost", "reposts"],
+    ["view", "views"],
+    ["engagement", "engagement"],
+  ] as const;
+
+  for (const [needle, type] of matchers) {
+    if (value.includes(needle)) return type;
+  }
+
+  return "other";
 }
 
 function inferPlatformName(category?: string, serviceName?: string) {
