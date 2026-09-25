@@ -5,13 +5,10 @@ import type {
   ProviderOrderResponse,
   ProviderOrderStatus,
   ProviderService,
+  ProviderRefillResponse,
 } from "./types";
 
-type GenericProviderConfig = {
-  baseUrl: string;
-  apiKey: string;
-  timeoutMs?: number;
-};
+type GenericProviderConfig = { baseUrl: string; apiKey: string; timeoutMs?: number };
 
 export class GenericPanelProvider implements ProviderAdapter {
   private readonly baseUrl: string;
@@ -27,28 +24,18 @@ export class GenericPanelProvider implements ProviderAdapter {
   private async request<T>(body: Record<string, string | number>): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-
     try {
       const response = await fetch(this.baseUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
         body: new URLSearchParams({
           key: this.apiKey,
-          ...Object.fromEntries(
-            Object.entries(body).map(([key, value]) => [key, String(value)]),
-          ),
+          ...Object.fromEntries(Object.entries(body).map(([key, value]) => [key, String(value)])),
         }).toString(),
         signal: controller.signal,
         cache: "no-store",
       });
-
-      if (!response.ok) {
-        throw new Error(`Provider returned HTTP ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}`);
       return (await response.json()) as T;
     } finally {
       clearTimeout(timeout);
@@ -58,7 +45,6 @@ export class GenericPanelProvider implements ProviderAdapter {
   async getServices(): Promise<ProviderService[]> {
     const result = await this.request<unknown>({ action: "services" });
     if (!Array.isArray(result)) return [];
-
     return result.map((item) => {
       const service = item as Record<string, unknown>;
       return {
@@ -66,70 +52,59 @@ export class GenericPanelProvider implements ProviderAdapter {
         name: String(service.name ?? ""),
         category: service.category ? String(service.category) : undefined,
         type: service.type ? String(service.type) : undefined,
-        rate: typeof service.rate === "number" ? service.rate : Number(service.rate ?? 0),
+        rate: toNumber(service.rate),
         min: Number(service.min ?? 0),
         max: Number(service.max ?? 0),
         refill: Boolean(service.refill),
         cancel: Boolean(service.cancel),
-        raw: service,
       };
     });
   }
 
   async getBalance(): Promise<ProviderBalance> {
     const result = await this.request<Record<string, unknown>>({ action: "balance" });
-    return {
-      balance: Number(result.balance ?? 0),
-      currency: String(result.currency ?? "USD"),
-      raw: result,
-    };
+    return { balance: Number(result.balance ?? 0), currency: String(result.currency ?? "USD") };
   }
 
   async createOrder(request: ProviderOrderRequest): Promise<ProviderOrderResponse> {
     const result = await this.request<Record<string, unknown>>({
-      action: "add",
-      service: request.serviceId,
-      link: request.target,
-      quantity: request.quantity,
+      action: "add", service: request.serviceId, link: request.target, quantity: request.quantity,
     });
-
     const providerOrderId = String(result.order ?? "");
-    if (!providerOrderId) {
-      throw new Error("Provider did not return an order ID");
-    }
-
-    return { providerOrderId, raw: result };
+    if (!providerOrderId) throw new Error("Provider did not return an order ID");
+    return { providerOrderId };
   }
 
   async getOrderStatus(providerOrderId: string): Promise<ProviderOrderStatus> {
-    const result = await this.request<Record<string, unknown>>({
-      action: "status",
-      order: providerOrderId,
-    });
-
+    const result = await this.request<Record<string, unknown>>({ action: "status", order: providerOrderId });
     return {
       status: normalizeStatus(result.status),
       startCount: toOptionalNumber(result.start_count),
       currentCount: toOptionalNumber(result.current_count),
       completedQuantity: toOptionalNumber(result.completed),
       remains: toOptionalNumber(result.remains),
-      raw: result,
     };
   }
 
   async cancelOrder(providerOrderId: string): Promise<unknown> {
-    return this.request({
-      action: "cancel",
-      orders: providerOrderId,
-    });
+    return this.request({ action: "cancel", orders: providerOrderId });
+  }
+
+  async requestRefill(providerOrderId: string): Promise<ProviderRefillResponse> {
+    const result = await this.request<Record<string, unknown>>({ action: "refill", order: providerOrderId });
+    const providerRefillId = String(result.refill ?? result.id ?? "");
+    if (!providerRefillId) throw new Error("Provider did not return a refill ID");
+    return { providerRefillId };
   }
 
   async getRefillStatus(refillId: string): Promise<unknown> {
-    return this.request({
-      action: "refill_status",
-      refill: refillId,
-    });
+    return this.request({ action: "refill_status", refill: refillId });
   }
+}
+
+function toNumber(value: unknown) {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function toOptionalNumber(value: unknown) {
@@ -140,13 +115,11 @@ function toOptionalNumber(value: unknown) {
 
 function normalizeStatus(value: unknown): ProviderOrderStatus["status"] {
   const status = String(value ?? "").toLowerCase();
-
   if (status.includes("cancel")) return "cancelled";
   if (status.includes("partial")) return "partial";
   if (status.includes("complete")) return "completed";
   if (status.includes("process") || status.includes("progress")) return "processing";
   if (status.includes("fail") || status.includes("error")) return "failed";
   if (status.includes("pending") || status.includes("await")) return "pending";
-
   return "unknown";
 }
