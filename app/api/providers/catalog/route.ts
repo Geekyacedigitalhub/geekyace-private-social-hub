@@ -62,7 +62,7 @@ export async function POST(request: Request) {
           // as removed and their existing mappings could be deactivated.
           throw new Error("Provider returned a malformed catalog service.");
         }
-        if (seenExternalIds.has(remote.id)) continue;
+        if (seenExternalIds.has(remote.id)) {\n          // Duplicate external IDs make the provider catalog ambiguous. Treat\n          // the whole sync as invalid rather than silently importing a partial\n          // interpretation of the provider response.\n          throw new Error("Provider returned duplicate catalog service IDs.");\n        }
         seenExternalIds.add(remote.id);
 
         const platformName = inferPlatformName(remote.category, remote.name);
