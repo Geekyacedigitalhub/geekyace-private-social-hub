@@ -37,9 +37,20 @@ export async function POST(request: Request) {
     try {
       const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
       const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
-      const updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: { providerOrderId: created.providerOrderId } });
-      return NextResponse.json({ ok: true, order: updated ?? order });
+
+      let updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
+      if (!updated) {
+        for (let attempt = 0; attempt < 2 && !updated; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+          updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
+        }
+      }
+      if (!updated) {
+        console.error("Provider order created but local order update failed:", order.id);
+        return NextResponse.json({ ok: false, error: "Order was submitted, but local status synchronization is pending. Do not resubmit this order." }, { status: 503 });
+      }
+      return NextResponse.json({ ok: true, order: updated });
     } catch {
       await db.update(orders).set({ status: "failed", errorMessage: "Upstream provider submission failed.", updatedAt: new Date() }).where(eq(orders.id, order.id));
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submission_failed", message: "Order could not be submitted to upstream provider." });
