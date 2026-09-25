@@ -21,8 +21,8 @@ export async function POST(request: Request) {
       const inserted = await db.insert(providers).values({ name: providerName, baseUrl, enabled: true }).returning();
       providerRow = inserted[0];
       if (!providerRow) throw new Error("Provider record could not be created.");
-    } else if (!providerRow.enabled || providerRow.baseUrl !== baseUrl) {
-      const updated = await db.update(providers).set({ baseUrl, enabled: true }).where(eq(providers.id, providerRow.id)).returning();
+    } else if (providerRow.baseUrl !== baseUrl) {
+      const updated = await db.update(providers).set({ baseUrl }).where(eq(providers.id, providerRow.id)).returning();
       providerRow = updated[0];
       if (!providerRow) throw new Error("Provider record could not be updated.");
     }
