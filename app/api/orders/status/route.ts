@@ -9,6 +9,9 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
 
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(orderId)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
+
     if (!orderId) {
       return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
     }
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
       orderId: order.id,
       eventType: "status_check",
       message: "Provider status checked.",
-      payload: status.raw ? { providerResponse: status.raw } : null,
+      payload: { providerStatus: status.status },
     });
 
     return NextResponse.json({ ok: true, order: updated, providerStatus: status.status });
