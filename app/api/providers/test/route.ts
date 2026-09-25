@@ -31,7 +31,7 @@ export async function POST() {
       serviceCount: services.length,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Provider connection failed.";
-    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+    console.error("Provider connection test failed:", error);
+    return NextResponse.json({ ok: false, error: "Provider connection failed." }, { status: 502 });
   }
 }
