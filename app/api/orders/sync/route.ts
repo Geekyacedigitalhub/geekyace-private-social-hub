@@ -77,7 +77,17 @@ export async function POST(request: Request) {
     // Always take the oldest active orders. Each checked order has its
     // updatedAt refreshed below, so the next run naturally advances through
     // the active set without offset pagination skipping rows as ordering shifts.
-    const active = await db.select().from(orders)
+    const active = await db.select({
+      id: orders.id,
+      providerId: orders.providerId,
+      providerOrderId: orders.providerOrderId,
+      status: orders.status,
+      startCount: orders.startCount,
+      currentCount: orders.currentCount,
+      completedQuantity: orders.completedQuantity,
+      remains: orders.remains,
+      updatedAt: orders.updatedAt,
+    }).from(orders)
       .where(inArray(orders.status, ["pending", "processing"]))
       .orderBy(asc(orders.updatedAt))
       .limit(100);
@@ -224,14 +234,24 @@ export async function POST(request: Request) {
     const unknownStatuses = orderResults.filter((result) => result.unknownStatus).length;
 
     const activeRefills = await db
-      .select()
+      .select({
+        id: refills.id,
+        orderId: refills.orderId,
+        providerRefillId: refills.providerRefillId,
+        status: refills.status,
+        completedAt: refills.completedAt,
+        createdAt: refills.createdAt,
+      })
       .from(refills)
       .where(inArray(refills.status, ["requested", "processing"]))
       .orderBy(asc(refills.createdAt))
       .limit(100);
     const refillOrderIds = activeRefills.map((refill) => refill.orderId);
     const refillOrders = refillOrderIds.length > 0
-      ? await db.select().from(orders).where(inArray(orders.id, refillOrderIds))
+      ? await db.select({
+          id: orders.id,
+          providerId: orders.providerId,
+        }).from(orders).where(inArray(orders.id, refillOrderIds))
       : [];
     const refillOrderById = new Map(refillOrders.map((order) => [order.id, order]));
     const refillResults = await mapWithConcurrency(activeRefills, SYNC_CONCURRENCY, async (refill): Promise<RefillSyncResult> => {
