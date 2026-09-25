@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         platformRow = inserted[0];
         if (!platformRow) throw new Error("Platform record could not be created.");
       }
-      const serviceSlug = (remote.name + "-" + remote.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const serviceSlug = (remote.name + "-" + remote.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 240);
       let serviceRow = (await db.select().from(services).where(eq(services.slug, serviceSlug))).at(0);
       if (!serviceRow) {
         const inserted = await db.insert(services).values({ platformId: platformRow.id, name: remote.name, slug: serviceSlug, description: remote.type ? String(remote.type) : null, minQuantity: remote.min, maxQuantity: remote.max, enabled: true }).returning();
