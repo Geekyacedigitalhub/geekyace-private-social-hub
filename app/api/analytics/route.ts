@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       refillRecords: Number(refillCount[0]?.value ?? 0),
       events: Number(eventCount[0]?.value ?? 0),
       totalQuantity: Number(quantity[0]?.value ?? 0),
-    });
+    }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Analytics query failed:", error);
     return NextResponse.json({ error: "Unable to load analytics." }, { status: 500 });
