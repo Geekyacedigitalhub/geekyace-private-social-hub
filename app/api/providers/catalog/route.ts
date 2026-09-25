@@ -35,6 +35,8 @@ export async function POST(request: Request) {
 
     const seenExternalIds = new Set<string>();
     let imported = 0;
+    const platformCounts = new Map<string, number>();
+    const serviceTypeCounts = new Map<string, number>();
 
     await db.transaction(async (tx) => {
       let providerRow = (await tx.select().from(providers).where(eq(providers.name, providerName))).at(0);
@@ -136,6 +138,8 @@ export async function POST(request: Request) {
         }
 
         const serviceType = inferServiceType(remote.category, remote.name, remote.type);
+        platformCounts.set(platformName, (platformCounts.get(platformName) ?? 0) + 1);
+        serviceTypeCounts.set(serviceType, (serviceTypeCounts.get(serviceType) ?? 0) + 1);
 
         const values = {
           providerId: providerRow.id,
@@ -184,6 +188,8 @@ export async function POST(request: Request) {
       provider: providerName,
       imported,
       available: remoteServices.length,
+      platforms: Object.fromEntries([...platformCounts.entries()].sort((a, b) => b[1] - a[1])),
+      serviceTypes: Object.fromEntries([...serviceTypeCounts.entries()].sort((a, b) => b[1] - a[1])),
     }, {
       headers: { "Cache-Control": "no-store, max-age=0" },
     });
