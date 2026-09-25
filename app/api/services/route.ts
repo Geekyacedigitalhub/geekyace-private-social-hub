@@ -28,6 +28,36 @@ export async function GET(request: Request) {
           order by provider_services.created_at desc
           limit 1
         ), 'other')`,
+        pricePerThousand: sql<string | null>`(
+          select provider_services.price_per_thousand
+          from provider_services
+          inner join providers on provider_services.provider_id = providers.id
+          where provider_services.service_id = services.id
+            and provider_services.active = true
+            and providers.enabled = true
+          order by provider_services.created_at desc
+          limit 1
+        )`,
+        refillSupported: sql<boolean>`coalesce((
+          select provider_services.refill_supported
+          from provider_services
+          inner join providers on provider_services.provider_id = providers.id
+          where provider_services.service_id = services.id
+            and provider_services.active = true
+            and providers.enabled = true
+          order by provider_services.created_at desc
+          limit 1
+        ), false)`,
+        cancelSupported: sql<boolean>`coalesce((
+          select coalesce((provider_services.metadata->>'cancelSupported')::boolean, false)
+          from provider_services
+          inner join providers on provider_services.provider_id = providers.id
+          where provider_services.service_id = services.id
+            and provider_services.active = true
+            and providers.enabled = true
+          order by provider_services.created_at desc
+          limit 1
+        ), false)`,
       })
       .from(services)
       .innerJoin(platforms, eq(services.platformId, platforms.id))
