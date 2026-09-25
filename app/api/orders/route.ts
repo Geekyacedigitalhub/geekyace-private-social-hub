@@ -39,8 +39,7 @@ export async function POST(request: Request) {
       const updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: { providerOrderId: created.providerOrderId } });
       return NextResponse.json({ ok: true, order: updated ?? order });
-    } catch (providerError) {
-      const message = providerError instanceof Error ? providerError.message : "Unable to submit order to upstream provider.";
+    } catch {
       await db.update(orders).set({ status: "failed", errorMessage: "Upstream provider submission failed.", updatedAt: new Date() }).where(eq(orders.id, order.id));
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submission_failed", message: "Order could not be submitted to upstream provider." });
       return NextResponse.json({ ok: false, error: "Order could not be submitted to the configured provider." }, { status: 502 });
