@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     // Keep the dashboard metrics in one aggregate query instead of seven
     // independent round-trips. The FILTER clauses preserve the existing
     // per-status counts while allowing Postgres to aggregate in one scan.
-    const [metrics] = await Promise.all([
+    const [orderMetrics, refillResult, eventResult] = await Promise.all([
       db
         .select({
           totalOrders: count(orders.id),
@@ -26,20 +26,18 @@ export async function GET(request: Request) {
         .from(orders),
       db.select({ value: count() }).from(refills),
       db.select({ value: count() }).from(orderEvents),
-    ]).then(async ([orderMetrics, refillResult, eventResult]) => ({
-      orderMetrics: orderMetrics[0],
-      refillCount: Number(refillResult[0]?.value ?? 0),
-      eventCount: Number(eventResult[0]?.value ?? 0),
-    }));
+    ]);
+
+    const metrics = orderMetrics[0];
 
     return NextResponse.json({
-      totalOrders: Number(metrics.orderMetrics?.totalOrders ?? 0),
-      activeOrders: Number(metrics.orderMetrics?.activeOrders ?? 0),
-      completedOrders: Number(metrics.orderMetrics?.completedOrders ?? 0),
-      failedOrders: Number(metrics.orderMetrics?.failedOrders ?? 0),
-      refillRecords: metrics.refillCount,
-      events: metrics.eventCount,
-      totalQuantity: Number(metrics.orderMetrics?.totalQuantity ?? 0),
+      totalOrders: Number(metrics?.totalOrders ?? 0),
+      activeOrders: Number(metrics?.activeOrders ?? 0),
+      completedOrders: Number(metrics?.completedOrders ?? 0),
+      failedOrders: Number(metrics?.failedOrders ?? 0),
+      refillRecords: Number(refillResult[0]?.value ?? 0),
+      events: Number(eventResult[0]?.value ?? 0),
+      totalQuantity: Number(metrics?.totalQuantity ?? 0),
     }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Analytics query failed:", error);
