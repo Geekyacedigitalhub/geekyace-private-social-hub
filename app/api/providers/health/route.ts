@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
+import { desc } from "drizzle-orm";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
 import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
-
 export async function GET(request: Request) {
   const limited = rateLimit(request, "provider-health-read", 20);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
-    const rows = await db.select().from(providerHealth);
-    return NextResponse.json({ health: rows });
+    const rows = await db
+      .select()
+      .from(providerHealth)
+      .orderBy(desc(providerHealth.checkedAt))
+      .limit(200);
+    return NextResponse.json(
+      { health: rows },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Provider health query failed:", error);
     return NextResponse.json({ error: "Unable to load provider health." }, { status: 500 });
@@ -49,9 +56,22 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, status: "healthy", latencyMs, balance: balance.balance, currency: balance.currency, serviceCount: services.length }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json(
+      {
+        ok: true,
+        status: "healthy",
+        latencyMs,
+        balance: balance.balance,
+        currency: balance.currency,
+        serviceCount: services.length,
+      },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Provider health check failed:", error);
-    return NextResponse.json({ ok: false, status: "down", error: "Provider health check failed." }, { status: 502, headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json(
+      { ok: false, status: "down", error: "Provider health check failed." },
+      { status: 502, headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   }
 }
