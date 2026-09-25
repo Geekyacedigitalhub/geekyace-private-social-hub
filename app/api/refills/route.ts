@@ -69,12 +69,16 @@ export async function POST(request: Request) {
       requestedAt: new Date(),
     }).returning()).at(0);
 
-    await db.insert(orderEvents).values({
-      orderId: order.id,
-      eventType: "refill_requested",
-      message: "Refill request submitted to upstream provider.",
-      payload: { providerRefillId: created.providerRefillId },
-    });
+    try {
+      await db.insert(orderEvents).values({
+        orderId: order.id,
+        eventType: "refill_requested",
+        message: "Refill request submitted to upstream provider.",
+        payload: { providerRefillId: created.providerRefillId },
+      });
+    } catch (eventError) {
+      console.error("Refill event logging failed:", eventError);
+    }
 
     return NextResponse.json(
       { ok: true, refill: inserted },
