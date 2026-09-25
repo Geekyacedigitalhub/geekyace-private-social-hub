@@ -19,6 +19,7 @@ export class GenericPanelProvider implements ProviderAdapter {
     this.baseUrl = config.baseUrl.trim().replace(/\/$/, "");
     this.apiKey = config.apiKey.trim();
     if (!this.baseUrl || !this.apiKey || this.baseUrl.length > 2048) throw new Error("Provider configuration is invalid.");
+    validateProviderUrl(this.baseUrl);
     const timeoutMs = config.timeoutMs ?? 15000;
     if (!Number.isFinite(timeoutMs) || timeoutMs < 1000 || timeoutMs > 30000) {
       throw new Error("Provider timeout configuration is invalid.");
@@ -127,6 +128,40 @@ export class GenericPanelProvider implements ProviderAdapter {
   async getRefillStatus(refillId: string): Promise<unknown> {
     if (!refillId.trim() || refillId.length > 256) throw new Error("Provider refill ID is invalid");
     return this.request({ action: "refill_status", refill: refillId });
+  }
+}
+
+function validateProviderUrl(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Provider URL is invalid.");
+  }
+
+  if (url.protocol !== "https:") {
+    throw new Error("Provider URL must use HTTPS.");
+  }
+
+  if (url.username || url.password) {
+    throw new Error("Provider URL must not contain embedded credentials.");
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "localhost.localdomain" ||
+    hostname === "::1" ||
+    hostname === "[::1]" ||
+    /^127(?:\.\d{1,3}){3}$/.test(hostname) ||
+    /^10(?:\.\d{1,3}){3}$/.test(hostname) ||
+    /^192\.168(?:\.\d{1,3}){2}$/.test(hostname) ||
+    /^172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}$/.test(hostname) ||
+    /^169\.254(?:\.\d{1,3}){2}$/.test(hostname) ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local")
+  ) {
+    throw new Error("Provider URL points to a private or local network address.");
   }
 }
 
