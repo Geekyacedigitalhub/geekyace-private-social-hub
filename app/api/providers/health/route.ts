@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, lt } from "drizzle-orm";
+import { desc, eq, lt } from "drizzle-orm";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
 import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const [balance, services] = await Promise.all([provider.getBalance(), provider.getServices()]);
     const latencyMs = Date.now() - started;
 
-    const providerRow = (await db.select().from(providers)).find((item) => item.name === providerName);
+    const providerRow = (await db.select().from(providers).where(eq(providers.name, providerName))).at(0);
     if (providerRow) {
       // Health and balance are telemetry, not an audit trail. Retain a bounded
       // history so repeated checks cannot grow these tables indefinitely.
