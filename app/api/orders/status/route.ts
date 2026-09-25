@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const provider = createProviderAdapter({
       name: providerRow.name,
-      baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
+      baseUrl: providerRow.baseUrl,
       apiKey: process.env.PROVIDER_API_KEY ?? "",
     });
 
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       payload: { providerStatus: status.status },
     });
 
-    return NextResponse.json({ ok: true, order: updated, providerStatus: status.status });
+    return NextResponse.json({ ok: true, order: updated, providerStatus: status.status }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Order status check failed:", error);
     return NextResponse.json({ ok: false, error: "Unable to update order status." }, { status: 502 });
