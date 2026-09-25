@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const secret = process.env.INTERNAL_SYNC_SECRET;
   if (!secret || request.headers.get("x-sync-secret") !== secret) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
-    const active = await db.select().from(orders).where(inArray(orders.status, ["pending", "processing"]));
+    const active = await db.select().from(orders).where(inArray(orders.status, ["pending", "processing"])).orderBy(asc(orders.updatedAt)).limit(100);
     let updated = 0;
     for (const order of active) {
       if (!order.providerId) continue;
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       }
       if (changed) updated++;
     }
-    const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"]));
+    const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"])).orderBy(asc(refills.createdAt)).limit(100);
     let refillsUpdated = 0;
 
     for (const refill of activeRefills) {
