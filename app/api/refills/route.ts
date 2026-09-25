@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orders, providers, refills } from "@/lib/db/schema";
+import { orders, providerServices, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function GET() {
@@ -27,6 +27,16 @@ export async function POST(request: Request) {
 
     const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
     if (!providerRow?.enabled) return NextResponse.json({ error: "Assigned provider is unavailable." }, { status: 409 });
+
+    const mapping = (await db.select().from(providerServices).where(and(eq(providerServices.providerId, order.providerId), eq(providerServices.serviceId, order.serviceId), eq(providerServices.active, true)))).at(0);
+    if (!mapping?.refillSupported) {
+      return NextResponse.json({ error: "Refill is not enabled for this service." }, { status: 409 });
+    }
+
+    const existing = (await db.select().from(refills).where(and(eq(refills.orderId, order.id), inArray(refills.status, ["eligible", "requested", "processing"])))).at(0);
+    if (existing) {
+      return NextResponse.json({ error: "An active refill request already exists for this order." }, { status: 409 });
+    }
 
     const provider = createProviderAdapter({
       name: providerRow.name,
