@@ -58,7 +58,20 @@ export async function POST(request: Request) {
         continue;
       }
       if (status.status === "unknown") continue;
-      await db.update(orders).set({ status: status.status, startCount: status.startCount, currentCount: status.currentCount, completedQuantity: status.completedQuantity, remains: status.remains, updatedAt: new Date() }).where(eq(orders.id, order.id));
+
+      const nextStatus =
+        ["completed", "failed", "cancelled"].includes(order.status)
+          ? order.status
+          : status.status;
+
+      await db.update(orders).set({
+        status: nextStatus,
+        startCount: status.startCount,
+        currentCount: status.currentCount,
+        completedQuantity: status.completedQuantity,
+        remains: status.remains,
+        updatedAt: new Date(),
+      }).where(eq(orders.id, order.id));
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check", message: "Automatic provider status synchronization completed.", payload: { providerStatus: status.status } });
       updated++;
     }
