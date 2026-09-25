@@ -18,7 +18,21 @@ function pruneExpired(now: number) {
 
 export function rateLimit(request: Request, scope: string, limit: number) {
   const now = Date.now();
-  if (buckets.size >= MAX_BUCKETS) pruneExpired(now);
+  if (buckets.size >= MAX_BUCKETS) {
+    pruneExpired(now);
+    if (buckets.size >= MAX_BUCKETS) {
+      // Keep memory strictly bounded even when an attacker rotates source IPs.
+      let oldestKey: string | undefined;
+      let oldestResetAt = Number.POSITIVE_INFINITY;
+      for (const [key, bucket] of buckets) {
+        if (bucket.resetAt < oldestResetAt) {
+          oldestResetAt = bucket.resetAt;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) buckets.delete(oldestKey);
+    }
+  }
   const key = clientKey(request, scope);
   const current = buckets.get(key);
   if (!current || current.resetAt <= now) {
