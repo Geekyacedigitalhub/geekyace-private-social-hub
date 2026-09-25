@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       requestedAt: new Date(),
     }).returning()).at(0);
 
-    return NextResponse.json({ ok: true, refill: inserted });
+    await db.insert(orderEvents).values({\n      orderId: order.id,\n      eventType: "refill_requested",\n      message: "Refill request submitted to upstream provider.",\n      payload: { providerRefillId: created.providerRefillId },\n    });\n\n    return NextResponse.json({ ok: true, refill: inserted });
   } catch (error) {
     console.error("Refill request failed:", error);
     return NextResponse.json({ ok: false, error: "Refill request failed." }, { status: 502 });
