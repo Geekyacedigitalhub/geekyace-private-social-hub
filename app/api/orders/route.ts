@@ -4,11 +4,13 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
-
+import { requireOwner } from "@/lib/auth/require-owner";
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "orders-create", 10);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+  const denied = await requireOwner();
+  if (denied) return denied;
   try {
     const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
     const serviceId = String(body.serviceId ?? "").trim();
@@ -52,7 +54,6 @@ export async function POST(request: Request) {
         console.error("Provider order created but local order update failed:", order.id);
         return NextResponse.json({ ok: false, error: "Order was submitted, but local status synchronization is pending. Do not resubmit this order." }, { status: 503 });
       }
-
       try {
         await db.insert(orderEvents).values({
           orderId: order.id,
@@ -63,7 +64,6 @@ export async function POST(request: Request) {
       } catch (eventError) {
         console.error("Provider submission event logging failed:", eventError);
       }
-
       return NextResponse.json({ ok: true, order: updated });
     } catch {
       await db.update(orders).set({ status: "failed", errorMessage: "Upstream provider submission failed.", updatedAt: new Date() }).where(eq(orders.id, order.id));
@@ -79,6 +79,8 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const limited = rateLimit(request, "orders-read", 30);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+  const denied = await requireOwner();
+  if (denied) return denied;
   try {
     const rows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(200);
     return NextResponse.json({ orders: rows }, { headers: { "Cache-Control": "no-store, max-age=0" } });
