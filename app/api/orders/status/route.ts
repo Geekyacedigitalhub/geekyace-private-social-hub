@@ -15,10 +15,6 @@ export async function POST(request: Request) {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(orderId)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
 
-    if (!orderId) {
-      return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
-    }
-
     const order = (await db.select().from(orders).where(eq(orders.id, orderId))).at(0);
     if (!order || !order.providerOrderId || !order.providerId) {
       return NextResponse.json({ error: "Order or provider order ID not found." }, { status: 404 });
@@ -48,6 +44,13 @@ export async function POST(request: Request) {
           ? order.status
           : status.status;
 
+    const changed =
+      nextStatus !== order.status ||
+      status.startCount !== order.startCount ||
+      status.currentCount !== order.currentCount ||
+      status.completedQuantity !== order.completedQuantity ||
+      status.remains !== order.remains;
+
     const updated = (await db.update(orders).set({
       status: nextStatus,
       startCount: status.startCount,
@@ -57,14 +60,19 @@ export async function POST(request: Request) {
       updatedAt: new Date(),
     }).where(eq(orders.id, order.id)).returning()).at(0);
 
-    await db.insert(orderEvents).values({
-      orderId: order.id,
-      eventType: "status_check",
-      message: "Provider status checked.",
-      payload: { providerStatus: status.status },
-    });
+    if (changed) {
+      await db.insert(orderEvents).values({
+        orderId: order.id,
+        eventType: "status_check",
+        message: "Provider status changed.",
+        payload: { providerStatus: status.status },
+      });
+    }
 
-    return NextResponse.json({ ok: true, order: updated, providerStatus: status.status }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json(
+      { ok: true, order: updated, providerStatus: status.status },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Order status check failed:", error);
     return NextResponse.json({ ok: false, error: "Unable to update order status." }, { status: 502 });
