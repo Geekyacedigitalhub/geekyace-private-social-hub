@@ -53,7 +53,7 @@ export class GenericPanelProvider implements ProviderAdapter {
       const max = Number(service.max ?? 0);
       const id = String(service.service ?? "").trim();
       const name = String(service.name ?? "").trim();
-      if (!Number.isFinite(min) || !Number.isFinite(max) || !id || !name || min <= 0 || max < min) {
+      if (!Number.isFinite(min) || !Number.isFinite(max) || !id || !name || id.length > 256 || name.length > 512 || min <= 0 || max < min) {
         continue;
       }
       services.push({
@@ -89,6 +89,7 @@ export class GenericPanelProvider implements ProviderAdapter {
   }
 
   async getOrderStatus(providerOrderId: string): Promise<ProviderOrderStatus> {
+    if (!providerOrderId.trim() || providerOrderId.length > 256) throw new Error("Provider order ID is invalid");
     const result = await this.request<Record<string, unknown>>({ action: "status", order: providerOrderId });
     return {
       status: normalizeStatus(result.status),
@@ -100,10 +101,12 @@ export class GenericPanelProvider implements ProviderAdapter {
   }
 
   async cancelOrder(providerOrderId: string): Promise<unknown> {
+    if (!providerOrderId.trim() || providerOrderId.length > 256) throw new Error("Provider order ID is invalid");
     return this.request({ action: "cancel", orders: providerOrderId });
   }
 
   async requestRefill(providerOrderId: string): Promise<ProviderRefillResponse> {
+    if (!providerOrderId.trim() || providerOrderId.length > 256) throw new Error("Provider order ID is invalid");
     const result = await this.request<Record<string, unknown>>({ action: "refill", order: providerOrderId });
     const providerRefillId = String(result.refill ?? result.id ?? "");
     if (!providerRefillId || providerRefillId.length > 256) throw new Error("Provider did not return a valid refill ID");
@@ -111,6 +114,7 @@ export class GenericPanelProvider implements ProviderAdapter {
   }
 
   async getRefillStatus(refillId: string): Promise<unknown> {
+    if (!refillId.trim() || refillId.length > 256) throw new Error("Provider refill ID is invalid");
     return this.request({ action: "refill_status", refill: refillId });
   }
 }
