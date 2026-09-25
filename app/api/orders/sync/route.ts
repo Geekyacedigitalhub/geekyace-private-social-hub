@@ -147,11 +147,14 @@ export async function POST(request: Request) {
       }
       if (changed) updated++;
     }
-    const refillCountResult = await db.select({ count: count() }).from(refills).where(inArray(refills.status, ["requested", "processing"]));
-    const refillCount = Number(refillCountResult.at(0)?.count ?? 0);
-    const refillPages = Math.max(1, Math.ceil(refillCount / 100));
-    const refillPage = Math.floor(Date.now() / (15 * 60 * 1000)) % refillPages;
-    const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"])).orderBy(asc(refills.createdAt)).limit(100).offset(refillPage * 100);
+    // Refill checks also update rows as they progress. Avoid offset pagination
+    // because changing rows between runs can shift later refills and cause skips.
+    const activeRefills = await db
+      .select()
+      .from(refills)
+      .where(inArray(refills.status, ["requested", "processing"]))
+      .orderBy(asc(refills.createdAt))
+      .limit(100);
     let refillsUpdated = 0;
 
     for (const refill of activeRefills) {
