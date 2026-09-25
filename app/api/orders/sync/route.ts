@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -8,7 +8,11 @@ export async function POST(request: Request) {
   const secret = process.env.INTERNAL_SYNC_SECRET;
   if (!secret || request.headers.get("x-sync-secret") !== secret) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
-    const active = await db.select().from(orders).where(inArray(orders.status, ["pending", "processing"])).orderBy(asc(orders.updatedAt)).limit(100);
+    const activeCountResult = await db.select({ count: count() }).from(orders).where(inArray(orders.status, ["pending", "processing"]));
+    const activeCount = Number(activeCountResult.at(0)?.count ?? 0);
+    const orderPages = Math.max(1, Math.ceil(activeCount / 100));
+    const orderPage = Math.floor(Date.now() / (15 * 60 * 1000)) % orderPages;
+    const active = await db.select().from(orders).where(inArray(orders.status, ["pending", "processing"])).orderBy(asc(orders.updatedAt)).limit(100).offset(orderPage * 100);
     let updated = 0;
     let skippedProvider = 0;
     let providerFailures = 0;
@@ -92,7 +96,11 @@ export async function POST(request: Request) {
       }
       if (changed) updated++;
     }
-    const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"])).orderBy(asc(refills.createdAt)).limit(100);
+    const refillCountResult = await db.select({ count: count() }).from(refills).where(inArray(refills.status, ["requested", "processing"]));
+    const refillCount = Number(refillCountResult.at(0)?.count ?? 0);
+    const refillPages = Math.max(1, Math.ceil(refillCount / 100));
+    const refillPage = Math.floor(Date.now() / (15 * 60 * 1000)) % refillPages;
+    const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"])).orderBy(asc(refills.createdAt)).limit(100).offset(refillPage * 100);
     let refillsUpdated = 0;
 
     for (const refill of activeRefills) {
