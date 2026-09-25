@@ -1,4 +1,4 @@
-import { and, eq, exists } from "drizzle-orm";
+import { and, eq, exists, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
@@ -18,6 +18,16 @@ export async function GET(request: Request) {
         platform: platforms.name,
         min: services.minQuantity,
         max: services.maxQuantity,
+        serviceType: sql<string>`coalesce((
+          select provider_services.metadata->>'serviceType'
+          from provider_services
+          inner join providers on provider_services.provider_id = providers.id
+          where provider_services.service_id = services.id
+            and provider_services.active = true
+            and providers.enabled = true
+          order by provider_services.created_at desc
+          limit 1
+        ), 'other')`,
       })
       .from(services)
       .innerJoin(platforms, eq(services.platformId, platforms.id))
