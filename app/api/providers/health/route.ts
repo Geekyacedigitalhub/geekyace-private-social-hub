@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { desc, lt } from "drizzle-orm";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
 import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
@@ -51,6 +51,16 @@ export async function POST(request: Request) {
 
     const providerRow = (await db.select().from(providers)).find((item) => item.name === providerName);
     if (providerRow) {
+      // Health and balance are telemetry, not an audit trail. Retain a bounded
+      // history so repeated checks cannot grow these tables indefinitely.
+      const retentionCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      await db.delete(providerHealth).where(
+        lt(providerHealth.checkedAt, retentionCutoff),
+      );
+      await db.delete(providerBalanceSnapshots).where(
+        lt(providerBalanceSnapshots.checkedAt, retentionCutoff),
+      );
+
       await db.insert(providerHealth).values({
         providerId: providerRow.id,
         status: "healthy",
