@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
   const apiKey = process.env.PROVIDER_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "PROVIDER_API_KEY is not configured on the server." }, { status: 503 });
+  if (!baseUrl || !apiKey) return NextResponse.json({ error: "Provider API is not configured on the server." }, { status: 503 });
 
   try {
     const providerName = process.env.PROVIDER_NAME ?? "SMM Panel Nigeria";
