@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimit(request, "settings-read", 20);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   return NextResponse.json({
     privateMode: true,
     ownerEmailConfigured: Boolean(process.env.PRIVATE_OWNER_EMAIL),
