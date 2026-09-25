@@ -1,8 +1,30 @@
 import { NextResponse } from "next/server";
-import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+
+async function recordSyncEvent(orderId: string, eventType: string, message: string, payload?: Record<string, unknown>) {
+  const since = new Date(Date.now() - 60 * 60 * 1000);
+  const recent = await db.select({ id: orderEvents.id })
+    .from(orderEvents)
+    .where(and(
+      eq(orderEvents.orderId, orderId),
+      eq(orderEvents.eventType, eventType),
+      gte(orderEvents.createdAt, since),
+    ))
+    .limit(1);
+
+  if (recent.length > 0) return false;
+
+  await db.insert(orderEvents).values({
+    orderId,
+    eventType,
+    message,
+    ...(payload ? { payload } : {}),
+  });
+  return true;
+}
 
 export async function POST(request: Request) {
   const secret = process.env.INTERNAL_SYNC_SECRET;
@@ -54,7 +76,7 @@ export async function POST(request: Request) {
       const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
       if (!providerRow?.enabled) {
         skippedProvider++;
-        await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check_skipped", message: "Automatic synchronization skipped because the assigned provider is unavailable." });
+        await recordSyncEvent(order.id, "automatic_status_check_skipped", "Automatic synchronization skipped because the assigned provider is unavailable.");
         continue;
       }
       const provider = createProviderAdapter({ name: providerRow.name, baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
@@ -63,7 +85,7 @@ export async function POST(request: Request) {
         status = await provider.getOrderStatus(providerOrderId);
       } catch (providerError) {
         providerFailures++;
-        await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check_failed", message: "Automatic provider status synchronization failed.", payload: { error: "Provider request failed." } });
+        await recordSyncEvent(order.id, "automatic_status_check_failed", "Automatic provider status synchronization failed.", { error: "Provider request failed." });
         continue;
       }
       if (status.status === "unknown") {
