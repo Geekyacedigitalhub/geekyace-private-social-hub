@@ -13,11 +13,25 @@ export async function GET(request: Request) {
   const denied = await requireOwner();
   if (denied) return denied;
   try {
-    const rows = await db
-      .select()
-      .from(providerHealth)
-      .orderBy(desc(providerHealth.checkedAt))
-      .limit(200);
+    const requestedLimit = Number(new URL(request.url).searchParams.get("limit") ?? 200);
+  const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 200) : 200;
+  const rows = limit <= 20
+    ? await db
+        .select({
+          id: providerHealth.id,
+          providerId: providerHealth.providerId,
+          status: providerHealth.status,
+          responseTimeMs: providerHealth.responseTimeMs,
+          checkedAt: providerHealth.checkedAt,
+        })
+        .from(providerHealth)
+        .orderBy(desc(providerHealth.checkedAt))
+        .limit(limit)
+    : await db
+        .select()
+        .from(providerHealth)
+        .orderBy(desc(providerHealth.checkedAt))
+        .limit(limit);
     return NextResponse.json(
       { health: rows },
       { headers: { "Cache-Control": "no-store, max-age=0" } },
