@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Plus } from "lucide-react";
+import { ArrowLeft, RefreshCw, Plus, Search, PackageOpen } from "lucide-react";
 
 type Order = {
   id: string;
@@ -23,6 +23,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   async function loadOrders() {
     setLoading(true);
@@ -59,6 +61,12 @@ export default function OrdersPage() {
 
   useEffect(() => { void loadOrders(); }, []);
 
+  const filteredOrders = orders.filter((order) => {
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    const needle = query.trim().toLowerCase();
+    return matchesStatus && (!needle || order.id.toLowerCase().includes(needle) || order.target.toLowerCase().includes(needle));
+  });
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl p-5 sm:p-8">
@@ -75,17 +83,19 @@ export default function OrdersPage() {
           </Link>
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]"><div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search size={17} className="text-slate-400"/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search order ID or target..." className="w-full bg-transparent py-3 text-sm outline-none"/></div><select value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none"><option value="all">All statuses</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="completed">Completed</option><option value="partial">Partial</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></div>
+
+        <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
           {loading ? <div className="p-8 text-sm text-slate-500">Loading orders...</div> :
            error && !orders.length ? <div className="p-8 text-sm text-red-600">{error}</div> :
-           !orders.length ? <div className="p-10 text-center"><p className="font-semibold text-slate-900">No orders yet</p><p className="mt-1 text-sm text-slate-500">Create your first provider-backed order when a service mapping is configured.</p></div> :
+           !orders.length ? <div className="p-10 text-center"><PackageOpen className="mx-auto text-emerald-600" size={30}/><p className="mt-3 font-semibold text-slate-900">No orders yet</p><p className="mt-1 text-sm text-slate-500">Create your first provider-backed order when a service mapping is configured.</p></div> : !filteredOrders.length ? <div className="p-10 text-center"><p className="font-semibold text-slate-900">No matching orders</p><p className="mt-1 text-sm text-slate-500">Try a different search or status filter.</p></div> :
            <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
                 <tr><th className="px-4 py-3">Order</th><th className="px-4 py-3">Target</th><th className="px-4 py-3">Quantity</th><th className="px-4 py-3">Progress</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Action</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id}>
                     <td className="whitespace-nowrap px-4 py-4"><div className="font-medium text-slate-900">{order.id.slice(0, 8)}</div><div className="text-xs text-slate-400">{new Date(order.createdAt).toLocaleString()}</div></td>
                     <td className="max-w-xs truncate px-4 py-4 text-slate-600">{order.target}</td>
