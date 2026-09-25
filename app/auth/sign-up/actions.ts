@@ -15,10 +15,12 @@ export async function signUp(
     return { error: "Name, email, and a password of at least 12 characters are required." };
   }
 
-  if (
-    process.env.PRIVATE_OWNER_EMAIL &&
-    email !== process.env.PRIVATE_OWNER_EMAIL.trim().toLowerCase()
-  ) {
+  const ownerEmail = process.env.PRIVATE_OWNER_EMAIL?.trim().toLowerCase();
+  if (!ownerEmail) {
+    return { error: "Private owner access is not configured." };
+  }
+
+  if (email !== ownerEmail) {
     return { error: "Public registration is disabled for this private panel." };
   }
 
