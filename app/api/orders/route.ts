@@ -8,6 +8,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
     const serviceId = String(body.serviceId ?? "").trim();
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(serviceId)) return NextResponse.json({ error: "Invalid service ID." }, { status: 400 });
     const target = String(body.target ?? "").trim();
     if (target.length > 2048) return NextResponse.json({ error: "Target is too long." }, { status: 400 });
     const quantity = Number(body.quantity);
@@ -32,11 +34,11 @@ export async function POST(request: Request) {
       const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
       const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
       const updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
-      await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: created.raw ? { providerResponse: created.raw } : null });
+      await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: { providerOrderId: created.providerOrderId } });
       return NextResponse.json({ ok: true, order: updated ?? order });
     } catch (providerError) {
       const message = providerError instanceof Error ? providerError.message : "Unable to submit order to upstream provider.";
-      await db.update(orders).set({ status: "failed", errorMessage: message.slice(0, 1000), updatedAt: new Date() }).where(eq(orders.id, order.id));
+      await db.update(orders).set({ status: "failed", errorMessage: "Upstream provider submission failed.", updatedAt: new Date() }).where(eq(orders.id, order.id));
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submission_failed", message: "Order could not be submitted to upstream provider." });
       return NextResponse.json({ ok: false, error: "Order could not be submitted to the configured provider." }, { status: 502 });
     }
