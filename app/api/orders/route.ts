@@ -6,179 +6,51 @@ import { createProviderAdapter } from "@/lib/providers";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
-      serviceId?: string;
-      target?: string;
-      quantity?: number;
-    };
-
+    const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
     const serviceId = String(body.serviceId ?? "").trim();
     const target = String(body.target ?? "").trim();
     const quantity = Number(body.quantity);
-
     if (!serviceId || !target || !Number.isInteger(quantity) || quantity <= 0) {
-      return NextResponse.json(
-        { error: "Service, target, and a valid quantity are required." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Service, target, and a valid quantity are required." }, { status: 400 });
     }
-
-    const service = (
-      await db.select().from(services).where(eq(services.id, serviceId))
-    ).at(0);
-
-    if (!service || !service.enabled) {
-      return NextResponse.json({ error: "Service is unavailable." }, { status: 404 });
-    }
-
+    const service = (await db.select().from(services).where(eq(services.id, serviceId))).at(0);
+    if (!service || !service.enabled) return NextResponse.json({ error: "Service is unavailable." }, { status: 404 });
     if (quantity < service.minQuantity || quantity > service.maxQuantity) {
-      return NextResponse.json(
-        {
-          error:
-            "Quantity must be between " +
-            service.minQuantity +
-            " and " +
-            service.maxQuantity +
-            ".",
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Quantity must be between " + service.minQuantity + " and " + service.maxQuantity + "." }, { status: 400 });
     }
-
-    const mapping = (
-      await db
-        .select({
-          mapping: providerServices,
-          provider: providers,
-        })
-        .from(providerServices)
-        .innerJoin(providers, eq(providerServices.providerId, providers.id))
-        .where(eq(providerServices.serviceId, service.id))
-    ).find(({ mapping, provider }) => mapping.active && provider.enabled);
-
-    if (!mapping) {
-      return NextResponse.json(
-        { error: "No active provider mapping exists for this service." },
-        { status: 409 },
-      );
-    }
-
+    const mapping = (await db.select({ mapping: providerServices, provider: providers }).from(providerServices).innerJoin(providers, eq(providerServices.providerId, providers.id)).where(eq(providerServices.serviceId, service.id))).find(({ mapping, provider }) => mapping.active && provider.enabled);
+    if (!mapping) return NextResponse.json({ error: "No active provider mapping exists for this service." }, { status: 409 });
     const providerMin = mapping.mapping.minQuantity ?? service.minQuantity;
     const providerMax = mapping.mapping.maxQuantity ?? service.maxQuantity;
-
-    if (quantity < providerMin || quantity > providerMax) {
-      return NextResponse.json(
-        {
-          error:
-            "Quantity must be between " + providerMin + " and " + providerMax + " for the selected provider.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const inserted = await db
-      .insert(orders)
-      .values({
-        serviceId: service.id,
-        target,
-        quantity,
-        status: "pending",
-        providerId: mapping.provider.id,
-      })
-      .returning();
-
+    if (quantity < providerMin || quantity > providerMax) return NextResponse.json({ error: "Quantity must be between " + providerMin + " and " + providerMax + " for the selected provider." }, { status: 400 });
+    const inserted = await db.insert(orders).values({ serviceId: service.id, target, quantity, status: "pending", providerId: mapping.provider.id }).returning();
     const order = inserted[0];
-    if (!order) {
-      throw new Error("Order record could not be created.");
-    }
-
-    await db.insert(orderEvents).values({
-      orderId: order.id,
-      eventType: "created",
-      message: "Local order created; awaiting upstream provider submission.",
-    });
-
+    if (!order) throw new Error("Order record could not be created.");
+    await db.insert(orderEvents).values({ orderId: order.id, eventType: "created", message: "Local order created; awaiting upstream provider submission." });
     try {
-      const provider = createProviderAdapter({
-        name: mapping.provider.name,
-        baseUrl: mapping.provider.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
-        apiKey: process.env.PROVIDER_API_KEY ?? "",
-      });
-
-      const created = await provider.createOrder({
-        serviceId: mapping.mapping.externalServiceId,
-        target,
-        quantity,
-      });
-
-      const updated = (
-        await db
-          .update(orders)
-          .set({
-            status: "processing",
-            providerOrderId: created.providerOrderId,
-            updatedAt: new Date(),
-          })
-          .where(eq(orders.id, order.id))
-          .returning()
-      ).at(0);
-
-      await db.insert(orderEvents).values({
-        orderId: order.id,
-        eventType: "provider_submitted",
-        message: "Order submitted to upstream provider.",
-        payload: created.raw ? { providerResponse: created.raw } : null,
-      });
-
+      const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
+      const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
+      const updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
+      await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: created.raw ? { providerResponse: created.raw } : null });
       return NextResponse.json({ ok: true, order: updated ?? order });
     } catch (providerError) {
-      const message =
-        providerError instanceof Error
-          ? providerError.message
-          : "Unable to submit order to upstream provider.";
-
-      const failed = (
-        await db
-          .update(orders)
-          .set({
-            status: "failed",
-            errorMessage: message.slice(0, 1000),
-            updatedAt: new Date(),
-          })
-          .where(eq(orders.id, order.id))
-          .returning()
-      ).at(0);
-
-      await db.insert(orderEvents).values({
-        orderId: order.id,
-        eventType: "provider_submission_failed",
-        message: "Order could not be submitted to upstream provider.",
-      });
-
-      return NextResponse.json(
-        { ok: false, error: "Order could not be submitted to the configured provider." },
-        { status: 502 },
-      );
+      const message = providerError instanceof Error ? providerError.message : "Unable to submit order to upstream provider.";
+      await db.update(orders).set({ status: "failed", errorMessage: message.slice(0, 1000), updatedAt: new Date() }).where(eq(orders.id, order.id));
+      await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submission_failed", message: "Order could not be submitted to upstream provider." });
+      return NextResponse.json({ ok: false, error: "Order could not be submitted to the configured provider." }, { status: 502 });
     }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to create order.";
-    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+    console.error("Order creation failed:", error);
+    return NextResponse.json({ ok: false, error: "Unable to create order." }, { status: 500 });
   }
 }
 
 export async function GET() {
   try {
-    const rows = await db
-      .select()
-      .from(orders)
-      .orderBy(desc(orders.createdAt))
-      .limit(200);
-
+    const rows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(200);
     return NextResponse.json({ orders: rows });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to load orders.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Order list failed:", error);
+    return NextResponse.json({ error: "Unable to load orders." }, { status: 500 });
   }
 }
