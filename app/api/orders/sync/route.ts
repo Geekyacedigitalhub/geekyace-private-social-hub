@@ -113,6 +113,9 @@ export async function POST(request: Request) {
           ? order.status
           : status.status;
 
+      // Only update orders that are still active. A concurrent manual status
+      // check can finalize an order while this provider request is in flight;
+      // never let a stale sync response overwrite that terminal state.
       await db.update(orders).set({
         status: nextStatus,
         startCount: status.startCount,
@@ -120,7 +123,10 @@ export async function POST(request: Request) {
         completedQuantity: status.completedQuantity,
         remains: status.remains,
         updatedAt: new Date(),
-      }).where(eq(orders.id, order.id));
+      }).where(and(
+        eq(orders.id, order.id),
+        inArray(orders.status, ["pending", "processing"]),
+      ));
       const changed = nextStatus !== order.status ||
         status.startCount !== order.startCount ||
         status.currentCount !== order.currentCount ||
@@ -170,10 +176,15 @@ export async function POST(request: Request) {
 
         const refillChanged = providerStatus !== refill.status;
         if (refillChanged) {
+          // Do not let a stale provider response move a refill backward after
+          // another worker has already finalized it.
           await db.update(refills).set({
             status: providerStatus,
             completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
-          }).where(eq(refills.id, refill.id));
+          }).where(and(
+            eq(refills.id, refill.id),
+            inArray(refills.status, ["requested", "processing"]),
+          ));
 
           try {
             await db.insert(orderEvents).values({
