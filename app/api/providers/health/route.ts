@@ -3,7 +3,7 @@ import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
 import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
-import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, "provider-health-read", 20);
