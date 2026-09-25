@@ -7,7 +7,7 @@ import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "order-status", 30);
-    if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
@@ -36,8 +36,16 @@ export async function POST(request: Request) {
     });
 
     const status = await provider.getOrderStatus(order.providerOrderId);
+    const terminalStatuses = new Set(["completed", "failed", "cancelled"]);
+    const nextStatus =
+      status.status === "unknown"
+        ? order.status
+        : terminalStatuses.has(order.status) && !terminalStatuses.has(status.status)
+          ? order.status
+          : status.status;
+
     const updated = (await db.update(orders).set({
-      status: status.status === "unknown" ? order.status : status.status,
+      status: nextStatus,
       startCount: status.startCount,
       currentCount: status.currentCount,
       completedQuantity: status.completedQuantity,
