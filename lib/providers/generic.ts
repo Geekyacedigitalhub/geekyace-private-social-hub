@@ -26,7 +26,7 @@ export class GenericPanelProvider implements ProviderAdapter {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await fetch(this.baseUrl, {
+      const response: Response = await fetch(this.baseUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
         body: new URLSearchParams({
@@ -37,7 +37,7 @@ export class GenericPanelProvider implements ProviderAdapter {
         cache: "no-store",
       });
       if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}`);
-      const body = await response.text();
+      const body: string = await response.text();
       if (body.length > 2_000_000) throw new Error("Provider response exceeded the maximum allowed size.");
       try {
         return JSON.parse(body) as T;
