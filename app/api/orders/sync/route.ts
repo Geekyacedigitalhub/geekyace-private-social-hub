@@ -72,9 +72,14 @@ export async function POST(request: Request) {
 
         if (typeof recoveredId === "string" && recoveredId.trim() && recoveredId.length <= 256) {
           providerOrderId = recoveredId.trim();
+          // Only recover an ID while the order is still active. A concurrent
+          // status check may have finalized the order while we searched its events.
           await db.update(orders)
             .set({ status: "processing", providerOrderId, updatedAt: new Date() })
-            .where(eq(orders.id, order.id));
+            .where(and(
+              eq(orders.id, order.id),
+              inArray(orders.status, ["pending", "processing"]),
+            ));
           try {
             await db.insert(orderEvents).values({
               orderId: order.id,
