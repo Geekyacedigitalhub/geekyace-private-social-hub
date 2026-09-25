@@ -26,7 +26,11 @@ async function enforcePrivateAuth(request: Request) {
     }
   }
 
-  if (pathname.endsWith("/sign-in/social") || pathname.includes("/sign-up/social")) {
+  if (
+    pathname.endsWith("/sign-in/social") ||
+    pathname.includes("/sign-up/social") ||
+    pathname.includes("/callback/")
+  ) {
     return NextResponse.json(
       { error: "Social sign-in is disabled for this private panel." },
       { status: 403 },
@@ -37,7 +41,6 @@ async function enforcePrivateAuth(request: Request) {
 }
 
 const authHandler = auth.handler();
-
 type AuthRouteContext = Parameters<typeof authHandler.POST>[1];
 
 async function POST(request: Request, context: AuthRouteContext) {
@@ -46,5 +49,10 @@ async function POST(request: Request, context: AuthRouteContext) {
   return authHandler.POST(request, context);
 }
 
-export const GET = authHandler.GET;
-export { POST };
+async function GET(request: Request, context: Parameters<typeof authHandler.GET>[1]) {
+  const blocked = await enforcePrivateAuth(request);
+  if (blocked) return blocked;
+  return authHandler.GET(request, context);
+}
+
+export { GET, POST };
