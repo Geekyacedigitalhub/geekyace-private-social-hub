@@ -8,7 +8,7 @@ import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 export async function POST(request: Request) {
   const limited = rateLimit(request, "provider-catalog", 5);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
-  const baseUrl = process.env.PROVIDER_API_BASE_URL ?? "https://app.smmpanel.ng/api/v2";
+  const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
   const apiKey = process.env.PROVIDER_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "PROVIDER_API_KEY is not configured on the server." }, { status: 503 });
 
