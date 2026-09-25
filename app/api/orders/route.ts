@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -62,7 +62,16 @@ export async function POST(request: Request) {
     if (quantity < service.minQuantity || quantity > service.maxQuantity) {
       return NextResponse.json({ error: "Quantity must be between " + service.minQuantity + " and " + service.maxQuantity + "." }, { status: 400 });
     }
-    const mapping = (await db.select({ mapping: providerServices, provider: providers }).from(providerServices).innerJoin(providers, eq(providerServices.providerId, providers.id)).where(eq(providerServices.serviceId, service.id))).find(({ mapping, provider }) => mapping.active && provider.enabled);
+    const mapping = (await db
+      .select({ mapping: providerServices, provider: providers })
+      .from(providerServices)
+      .innerJoin(providers, eq(providerServices.providerId, providers.id))
+      .where(and(
+        eq(providerServices.serviceId, service.id),
+        eq(providerServices.active, true),
+        eq(providers.enabled, true),
+      ))
+      .limit(1)).at(0);
     if (!mapping) return NextResponse.json({ error: "No active provider mapping exists for this service." }, { status: 409 });
     const providerMin = mapping.mapping.minQuantity ?? service.minQuantity;
     const providerMax = mapping.mapping.maxQuantity ?? service.maxQuantity;
