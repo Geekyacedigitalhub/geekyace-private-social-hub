@@ -3,8 +3,11 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "orders-create", 10);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
     const serviceId = String(body.serviceId ?? "").trim();
