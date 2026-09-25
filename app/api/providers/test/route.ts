@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createProviderAdapter } from "@/lib/providers";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const limited = rateLimit(request, "provider-test", 10);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const baseUrl = process.env.PROVIDER_API_BASE_URL;
   const apiKey = process.env.PROVIDER_API_KEY;
 
