@@ -1,13 +1,12 @@
-"use client";
-import { useMemo, useState } from "react";
-import { Globe2, ArrowUpRight, Boxes, CheckCircle2, ToggleRight, Search } from "lucide-react";
+import { Globe2, ArrowUpRight, Boxes, CheckCircle2, ToggleRight } from "lucide-react";
+import { db } from "@/lib/db";
+import { platforms } from "@/lib/db/schema";
+import { asc } from "drizzle-orm";
 
-type Platform={id:string;name:string;slug:string;enabled:boolean};
+export const dynamic = "force-dynamic";
 
-export default function PlatformsPage({ initialRows = [] }: { initialRows?: Platform[] }) {
-  const [query,setQuery]=useState("");
-  const [rows]=useState<Platform[]>(initialRows);
-  const filtered=useMemo(()=>{const q=query.trim().toLowerCase();return q?rows.filter(p=>p.name.toLowerCase().includes(q)||p.slug.toLowerCase().includes(q)):rows},[rows,query]);
+export default async function PlatformsPage() {
+  const rows = await db.select().from(platforms).orderBy(asc(platforms.name));
   return (
     <main className="min-h-screen bg-[#06100c]">
       <div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10">
@@ -18,12 +17,11 @@ export default function PlatformsPage({ initialRows = [] }: { initialRows?: Plat
             <p className="mt-2 text-sm text-slate-500">Your provider-backed platform catalog and availability state.</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-2.5 text-xs font-semibold text-slate-400">
-            <Boxes size={14} className="text-emerald-300"/> {filtered.length}{query?" matching ":" "}platform{filtered.length===1?"":"s"}
+            <Boxes size={14} className="text-emerald-300"/> {rows.length} platform{rows.length===1?"":"s"}
           </div>
         </header>
-        <div className="mt-8 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4"><Search size={16} className="text-slate-600"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search platforms..." className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-slate-600"/></div>
-        <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.length ? filtered.map((platform) => (
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {rows.length ? rows.map((platform) => (
             <article key={platform.id} className="gx-card gx-card-hover group relative overflow-hidden rounded-2xl p-5">
               <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-emerald-400/[0.05] blur-2xl"/>
               <div className="relative flex items-start justify-between gap-3">
