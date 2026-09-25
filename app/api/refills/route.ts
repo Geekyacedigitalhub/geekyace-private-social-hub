@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -9,8 +9,11 @@ export async function GET(request: Request) {
   const limited = rateLimit(request, "refills-read", 30);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
-    const rows = await db.select().from(refills).orderBy(refills.createdAt);
-    return NextResponse.json({ refills: rows });
+    const rows = await db.select().from(refills).orderBy(desc(refills.createdAt)).limit(200);
+    return NextResponse.json(
+      { refills: rows },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Refill list failed:", error);
     return NextResponse.json({ error: "Unable to load refills." }, { status: 500 });
@@ -73,7 +76,10 @@ export async function POST(request: Request) {
       payload: { providerRefillId: created.providerRefillId },
     });
 
-    return NextResponse.json({ ok: true, refill: inserted }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json(
+      { ok: true, refill: inserted },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Refill request failed:", error);
     return NextResponse.json({ ok: false, error: "Refill request failed." }, { status: 502 });
