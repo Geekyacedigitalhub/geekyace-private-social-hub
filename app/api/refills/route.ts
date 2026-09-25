@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orders, providerServices, providers, refills } from "@/lib/db/schema";
+import { orderEvents, orders, providerServices, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function GET() {
@@ -18,7 +18,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
-    if (!orderId) return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(orderId)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
 
     const order = (await db.select().from(orders).where(eq(orders.id, orderId))).at(0);
     if (!order?.providerOrderId || !order.providerId) {
