@@ -1,21 +1,4 @@
 "use client";
-
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, BarChart3 } from "lucide-react";
-
-type Stats = { totalOrders:number; activeOrders:number; completedOrders:number; failedOrders:number; refillRecords:number; events:number; totalQuantity:number };
-
-export default function AnalyticsPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  useEffect(() => { fetch("/api/analytics").then(r => r.json()).then(setStats).catch(() => setStats(null)); }, []);
-  const cards = stats ? [
-    ["Total orders", stats.totalOrders], ["Active orders", stats.activeOrders], ["Completed", stats.completedOrders],
-    ["Failed", stats.failedOrders], ["Refill records", stats.refillRecords], ["Order events", stats.events], ["Total quantity", stats.totalQuantity.toLocaleString()]
-  ] : [];
-  return <main className="min-h-screen bg-slate-50"><div className="mx-auto max-w-6xl p-5 sm:p-8">
-    <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-700"><ArrowLeft size={16}/> Dashboard</Link>
-    <div className="mt-5 flex items-center gap-3"><BarChart3 className="text-emerald-600"/><div><h1 className="text-2xl font-bold text-slate-900">Analytics</h1><p className="text-sm text-slate-500">Live operational metrics from the private panel database.</p></div></div>
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,value]) => <div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-xs font-medium uppercase text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold text-slate-900">{value}</p></div>)}</div>
-  </div></main>;
-}
+import Link from "next/link"; import {useEffect,useState} from "react"; import {ArrowUpRight,BarChart3,TrendingUp} from "lucide-react";
+type Stats={totalOrders:number;activeOrders:number;completedOrders:number;failedOrders:number;refillRecords:number;events:number;totalQuantity:number};
+export default function AnalyticsPage(){const[s,setS]=useState<Stats|null>(null);useEffect(()=>{fetch("/api/analytics",{cache:"no-store"}).then(r=>r.json()).then(setS).catch(()=>setS(null))},[]);const cards=s?[["Total orders",s.totalOrders],["Active",s.activeOrders],["Completed",s.completedOrders],["Failed",s.failedOrders],["Refill records",s.refillRecords],["Order events",s.events],["Quantity processed",s.totalQuantity]]:[];return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10"><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><header className="mt-6 flex items-end justify-between gap-4"><div><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><TrendingUp size={13}/> Intelligence</div><h1 className="mt-2 text-3xl font-semibold text-white">Analytics</h1><p className="mt-2 text-sm text-slate-500">Live operational metrics from the private workspace.</p></div><BarChart3 className="hidden text-emerald-400/40 sm:block" size={34}/></header><section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,value],i)=><div key={String(label)} className="gx-card gx-card-hover rounded-2xl p-5"><div className="flex justify-between"><span className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-600">{String(label)}</span><ArrowUpRight size={14} className="text-slate-700"/></div><p className="mt-7 text-3xl font-semibold text-white">{typeof value==="number"?value.toLocaleString():value}</p><div className="mt-4 h-1.5 rounded-full bg-white/[0.05]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300" style={{width:(30+(i*9))+"%"}}/></div></div>)}</section></div></main>}
