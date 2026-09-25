@@ -22,7 +22,7 @@ export class GenericPanelProvider implements ProviderAdapter {
     this.timeoutMs = config.timeoutMs ?? 15000;
   }
 
-  private async request<T>(body: Record<string, string | number>): Promise<T> {
+  private async request<T>(requestBody: Record<string, string | number>): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -31,7 +31,7 @@ export class GenericPanelProvider implements ProviderAdapter {
         headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
         body: new URLSearchParams({
           key: this.apiKey,
-          ...Object.fromEntries(Object.entries(body).map(([key, value]) => [key, String(value)])),
+          ...Object.fromEntries(Object.entries(requestBody).map(([key, value]) => [key, String(value)])),
         }).toString(),
         signal: controller.signal,
         cache: "no-store",
