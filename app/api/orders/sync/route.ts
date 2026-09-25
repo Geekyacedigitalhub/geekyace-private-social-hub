@@ -58,7 +58,10 @@ export async function POST(request: Request) {
         const submissionEvent = (await db
           .select({ payload: orderEvents.payload })
           .from(orderEvents)
-          .where(eq(orderEvents.orderId, order.id))
+          .where(and(
+            eq(orderEvents.orderId, order.id),
+            eq(orderEvents.eventType, "provider_submitted"),
+          ))
           .orderBy(desc(orderEvents.createdAt))
           .limit(20))
           .find((event) => {
@@ -74,12 +77,19 @@ export async function POST(request: Request) {
           providerOrderId = recoveredId.trim();
           // Only recover an ID while the order is still active. A concurrent
           // status check may have finalized the order while we searched its events.
-          await db.update(orders)
+          const recovered = (await db.update(orders)
             .set({ status: "processing", providerOrderId, updatedAt: new Date() })
             .where(and(
               eq(orders.id, order.id),
               inArray(orders.status, ["pending", "processing"]),
-            ));
+            ))
+            .returning({ id: orders.id })).at(0);
+
+          // Another worker may have finalized the order while recovery was
+          // reading the submission event. Stop here rather than querying the
+          // provider with a stale active-order snapshot.
+          if (!recovered) continue;
+
           try {
             await db.insert(orderEvents).values({
               orderId: order.id,
