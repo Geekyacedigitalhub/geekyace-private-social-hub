@@ -10,5 +10,5 @@ export async function GET(request: Request) {
     providerConfigured: Boolean(process.env.PROVIDER_API_BASE_URL && process.env.PROVIDER_API_KEY),
     syncConfigured: Boolean(process.env.INTERNAL_SYNC_SECRET),
     environment: process.env.NODE_ENV,
-  });
+  }, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }
