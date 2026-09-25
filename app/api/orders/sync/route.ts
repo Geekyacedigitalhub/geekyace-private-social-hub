@@ -86,7 +86,7 @@ export async function POST(request: Request) {
           payload: { providerStatus: status.status, previousStatus: order.status, nextStatus },
         });
       }
-      updated++;
+      if (changed) updated++;
     }
     const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"]));
     let refillsUpdated = 0;
@@ -111,18 +111,21 @@ export async function POST(request: Request) {
         const providerStatus = normalizeRefillStatus(raw);
         if (!providerStatus) continue;
 
-        await db.update(refills).set({
-          status: providerStatus,
-          completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
-        }).where(eq(refills.id, refill.id));
+        const refillChanged = providerStatus !== refill.status;
+        if (refillChanged) {
+          await db.update(refills).set({
+            status: providerStatus,
+            completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
+          }).where(eq(refills.id, refill.id));
 
-        await db.insert(orderEvents).values({
-          orderId: refill.orderId,
-          eventType: "automatic_refill_status_check",
-          message: "Provider refill status synchronized.",
-          payload: { providerStatus },
-        });
-        refillsUpdated++;
+          await db.insert(orderEvents).values({
+            orderId: refill.orderId,
+            eventType: "automatic_refill_status_check",
+            message: "Provider refill status changed.",
+            payload: { providerStatus, previousStatus: refill.status },
+          });
+          refillsUpdated++;
+        }
       } catch {
         await db.insert(orderEvents).values({
           orderId: refill.orderId,
