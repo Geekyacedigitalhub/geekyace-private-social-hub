@@ -93,7 +93,12 @@ export async function POST(request: Request) {
       .limit(100);
     // Cache provider configuration and adapters for the whole sync run.
     // This removes one providers query and adapter construction per active order/refill.
-    const providerRows = await db.select().from(providers);
+    const providerRows = await db.select({
+      id: providers.id,
+      name: providers.name,
+      baseUrl: providers.baseUrl,
+      enabled: providers.enabled,
+    }).from(providers);
     const providerById = new Map(providerRows.map((provider) => [provider.id, provider]));
     const providerAdapterById = new Map<string, ReturnType<typeof createProviderAdapter>>();
     const getProviderAdapter = (providerRow: typeof providerRows[number]) => {
