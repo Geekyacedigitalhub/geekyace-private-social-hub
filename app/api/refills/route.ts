@@ -5,12 +5,15 @@ import { orderEvents, orders, providerServices, providers, refills } from "@/lib
 import { createProviderAdapter } from "@/lib/providers";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { requireOwner } from "@/lib/auth/require-owner";
+import { requireSameOrigin } from "@/lib/security/csrf";
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, "refills-read", 30);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
+  const originDenied = requireSameOrigin(request);
+  if (originDenied) return originDenied;
   try {
     const rows = await db.select().from(refills).orderBy(desc(refills.createdAt)).limit(200);
     return NextResponse.json(

@@ -5,12 +5,15 @@ import { platforms, providerServices, providers, services } from "@/lib/db/schem
 import { createProviderAdapter } from "@/lib/providers";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { requireOwner } from "@/lib/auth/require-owner";
+import { requireSameOrigin } from "@/lib/security/csrf";
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "provider-catalog", 5);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
+  const originDenied = requireSameOrigin(request);
+  if (originDenied) return originDenied;
   const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
   const apiKey = process.env.PROVIDER_API_KEY;
   if (!baseUrl || !apiKey) return NextResponse.json({ error: "Provider API is not configured on the server." }, { status: 503 });

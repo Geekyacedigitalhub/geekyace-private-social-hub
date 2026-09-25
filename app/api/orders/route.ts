@@ -5,12 +5,15 @@ import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 import { requireOwner } from "@/lib/auth/require-owner";
+import { requireSameOrigin } from "@/lib/security/csrf";
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "orders-create", 10);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
+  const originDenied = requireSameOrigin(request);
+  if (originDenied) return originDenied;
   try {
     const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
     const serviceId = String(body.serviceId ?? "").trim();
