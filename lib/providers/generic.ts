@@ -37,7 +37,13 @@ export class GenericPanelProvider implements ProviderAdapter {
         cache: "no-store",
       });
       if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}`);
-      return (await response.json()) as T;
+      const body = await response.text();
+      if (body.length > 2_000_000) throw new Error("Provider response exceeded the maximum allowed size.");
+      try {
+        return JSON.parse(body) as T;
+      } catch {
+        throw new Error("Provider returned an invalid JSON response.");
+      }
     } finally {
       clearTimeout(timeout);
     }
