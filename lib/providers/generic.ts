@@ -47,18 +47,23 @@ export class GenericPanelProvider implements ProviderAdapter {
     if (!Array.isArray(result)) return [];
     return result.map((item) => {
       const service = item as Record<string, unknown>;
+      const min = Number(service.min ?? 0);
+      const max = Number(service.max ?? 0);
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        return null;
+      }
       return {
         id: String(service.service ?? ""),
         name: String(service.name ?? ""),
         category: service.category ? String(service.category) : undefined,
         type: service.type ? String(service.type) : undefined,
         rate: toNumber(service.rate),
-        min: Number(service.min ?? 0),
-        max: Number(service.max ?? 0),
+        min,
+        max,
         refill: Boolean(service.refill),
         cancel: Boolean(service.cancel),
       };
-    });
+    }).filter((service): service is ProviderService => service !== null && service.id.length > 0 && service.name.length > 0 && service.min > 0 && service.max >= service.min);
   }
 
   async getBalance(): Promise<ProviderBalance> {
