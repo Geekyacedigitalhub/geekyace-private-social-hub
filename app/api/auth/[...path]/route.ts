@@ -54,6 +54,9 @@ async function POST(request: Request, context: AuthRouteContext) {
 }
 
 async function GET(request: Request, context: Parameters<typeof authHandler.GET>[1]) {
+  const limited = rateLimit(request, "auth-get", 30);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+
   const blocked = await enforcePrivateAuth(request);
   if (blocked) return blocked;
   return authHandler.GET(request, context);
