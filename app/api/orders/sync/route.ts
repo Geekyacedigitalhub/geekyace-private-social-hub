@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orderEvents, orders, providers } from "@/lib/db/schema";
+import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function POST(request: Request) {
@@ -75,9 +75,67 @@ export async function POST(request: Request) {
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check", message: "Automatic provider status synchronization completed.", payload: { providerStatus: status.status } });
       updated++;
     }
-    return NextResponse.json({ ok: true, checked: active.length, updated });
+    const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"]));
+    let refillsUpdated = 0;
+
+    for (const refill of activeRefills) {
+      if (!refill.providerRefillId) continue;
+      const order = (await db.select().from(orders).where(eq(orders.id, refill.orderId))).at(0);
+      if (!order?.providerId) continue;
+      const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
+      if (!providerRow?.enabled) continue;
+
+      const provider = createProviderAdapter({
+        name: providerRow.name,
+        baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
+        apiKey: process.env.PROVIDER_API_KEY ?? "",
+      });
+
+      if (!provider.getRefillStatus) continue;
+
+      try {
+        const raw = await provider.getRefillStatus(refill.providerRefillId);
+        const providerStatus = normalizeRefillStatus(raw);
+        if (!providerStatus) continue;
+
+        await db.update(refills).set({
+          status: providerStatus,
+          completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
+        }).where(eq(refills.id, refill.id));
+
+        await db.insert(orderEvents).values({
+          orderId: refill.orderId,
+          eventType: "automatic_refill_status_check",
+          message: "Provider refill status synchronized.",
+          payload: { providerStatus },
+        });
+        refillsUpdated++;
+      } catch {
+        await db.insert(orderEvents).values({
+          orderId: refill.orderId,
+          eventType: "automatic_refill_status_check_failed",
+          message: "Automatic provider refill status synchronization failed.",
+          payload: { error: "Provider request failed." },
+        });
+      }
+    }
+
+    return NextResponse.json({ ok: true, checked: active.length, updated, refillsChecked: activeRefills.length, refillsUpdated });
   } catch (error) {
     console.error("Order synchronization failed:", error);
     return NextResponse.json({ ok: false, error: "Order synchronization failed." }, { status: 500 });
   }
+}
+
+
+function normalizeRefillStatus(value: unknown): "requested" | "processing" | "completed" | "failed" | null {
+  const raw = value && typeof value === "object" && !Array.isArray(value)
+    ? String((value as { status?: unknown }).status ?? (value as { refill?: unknown }).refill ?? "")
+    : String(value ?? "");
+  const status = raw.toLowerCase();
+  if (status.includes("complete") || status.includes("success") || status.includes("done")) return "completed";
+  if (status.includes("fail") || status.includes("error") || status.includes("reject")) return "failed";
+  if (status.includes("process") || status.includes("progress")) return "processing";
+  if (status.includes("pending") || status.includes("request") || status.includes("await")) return "requested";
+  return null;
 }
