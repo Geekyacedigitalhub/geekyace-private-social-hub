@@ -54,6 +54,7 @@ export const orders = pgTable("orders", {
   status: orderStatus("status").notNull().default("pending"),
   providerId: uuid("provider_id").references(() => providers.id, { onDelete: "set null" }),
   providerOrderId: text("provider_order_id"),
+  idempotencyKey: text("idempotency_key"),
   startCount: integer("start_count"),
   currentCount: integer("current_count"),
   completedQuantity: integer("completed_quantity"),

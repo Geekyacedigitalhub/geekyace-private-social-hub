@@ -7,6 +7,25 @@ import { createProviderAdapter } from "@/lib/providers";
 import { requireOwner } from "@/lib/auth/require-owner";
 import { requireSameOrigin } from "@/lib/security/csrf";
 
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
+
+function isUniqueViolation(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "23505";
+}
+
+function replayResponse(order: typeof orders.$inferSelect) {
+  if (order.status === "pending") {
+    return NextResponse.json({ ok: true, replayed: true, pending: true, order }, { status: 202 });
+  }
+  if (order.status === "failed" || order.status === "cancelled") {
+    return NextResponse.json(
+      { ok: false, replayed: true, error: "This order request has already been finalized unsuccessfully. Start a new order to retry.", order },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json({ ok: true, replayed: true, order });
+}
+
 export async function POST(request: Request) {
   const limited = rateLimit(request, "orders-create", 10);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
@@ -15,7 +34,20 @@ export async function POST(request: Request) {
   const originDenied = requireSameOrigin(request);
   if (originDenied) return originDenied;
   try {
-    const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
+    const body = (await request.json()) as {
+      serviceId?: string;
+      target?: string;
+      quantity?: number;
+      idempotencyKey?: string;
+    };
+    const idempotencyKey = String(body.idempotencyKey ?? request.headers.get("idempotency-key") ?? "").trim();
+    if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+      return NextResponse.json({ error: "A valid idempotency key is required." }, { status: 400 });
+    }
+
+    const existing = (await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey))).at(0);
+    if (existing) return replayResponse(existing);
+
     const serviceId = String(body.serviceId ?? "").trim();
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(serviceId)) return NextResponse.json({ error: "Invalid service ID." }, { status: 400 });
@@ -35,8 +67,24 @@ export async function POST(request: Request) {
     const providerMin = mapping.mapping.minQuantity ?? service.minQuantity;
     const providerMax = mapping.mapping.maxQuantity ?? service.maxQuantity;
     if (quantity < providerMin || quantity > providerMax) return NextResponse.json({ error: "Quantity must be between " + providerMin + " and " + providerMax + " for the selected provider." }, { status: 400 });
-    const inserted = await db.insert(orders).values({ serviceId: service.id, target, quantity, status: "pending", providerId: mapping.provider.id }).returning();
-    const order = inserted[0];
+
+    let order;
+    try {
+      order = (await db.insert(orders).values({
+        serviceId: service.id,
+        target,
+        quantity,
+        status: "pending",
+        providerId: mapping.provider.id,
+        idempotencyKey,
+      }).returning()).at(0);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      const conflicting = (await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey))).at(0);
+      if (conflicting) return replayResponse(conflicting);
+      throw error;
+    }
+
     if (!order) throw new Error("Order record could not be created.");
     try {
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "created", message: "Local order created; awaiting upstream provider submission." });
