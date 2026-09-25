@@ -11,6 +11,9 @@ type Service = {
   min: number;
   max: number;
   serviceType?: string;
+  pricePerThousand?: string | null;
+  refillSupported?: boolean;
+  cancelSupported?: boolean;
 };
 
 const serviceTypeLabels: Record<string, string> = {
@@ -37,6 +40,7 @@ export default function ServicesPage() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
+  const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -103,6 +107,7 @@ export default function ServicesPage() {
               {availableTypes.map((type) => <option key={type} value={type}>{serviceTypeLabels[type] ?? type}</option>)}
             </select>
           </label>
+          <label className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400"><input type="checkbox" checked={showDetails} onChange={(e) => setShowDetails(e.target.checked)} /> Details</label>
           <div className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400">
             {filtered.length}{query || platformFilter !== "all" || typeFilter !== "all" ? " matching" : ""} services
           </div>
@@ -124,7 +129,7 @@ export default function ServicesPage() {
                 return (
                   <div key={service.id} className="grid gap-3 border-b border-white/[0.045] px-5 py-5 transition hover:bg-white/[0.025] md:grid-cols-[1fr_1.5fr_1fr_.8fr_.7fr] md:items-center">
                     <span className="text-xs font-bold uppercase tracking-wide text-emerald-400">{service.platform}</span>
-                    <span><span className="block text-sm font-medium text-white">{service.name}</span><span className="mt-1 block text-[11px] text-slate-600">Available</span></span>
+                    <span><span className="block text-sm font-medium text-white">{service.name}</span><span className="mt-1 block text-[11px] text-slate-600">{showDetails ? [service.refillSupported ? "Refill" : null, service.cancelSupported ? "Cancel" : null, service.pricePerThousand ? `${service.pricePerThousand}/1k` : null].filter(Boolean).join(" · ") || "No extra capabilities reported" : "Available"}</span></span>
                     <span className="text-xs font-semibold text-slate-400">{serviceTypeLabels[serviceType] ?? serviceType}</span>
                     <span className="text-sm text-slate-400">{service.min.toLocaleString()} – {service.max.toLocaleString()}</span>
                     <Link href={"/new-order?serviceId="+encodeURIComponent(service.id)} className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-400/15"><ShoppingCart size={13}/> Order <ArrowUpRight size={12}/></Link>
