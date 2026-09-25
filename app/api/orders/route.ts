@@ -37,8 +37,6 @@ export async function POST(request: Request) {
     try {
       const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
       const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
-      await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: { providerOrderId: created.providerOrderId } });
-
       let updated = (await db.update(orders).set({ status: "processing", providerOrderId: created.providerOrderId, updatedAt: new Date() }).where(eq(orders.id, order.id)).returning()).at(0);
       if (!updated) {
         for (let attempt = 0; attempt < 2 && !updated; attempt += 1) {
@@ -50,6 +48,18 @@ export async function POST(request: Request) {
         console.error("Provider order created but local order update failed:", order.id);
         return NextResponse.json({ ok: false, error: "Order was submitted, but local status synchronization is pending. Do not resubmit this order." }, { status: 503 });
       }
+
+      try {
+        await db.insert(orderEvents).values({
+          orderId: order.id,
+          eventType: "provider_submitted",
+          message: "Order submitted to upstream provider.",
+          payload: { providerOrderId: created.providerOrderId },
+        });
+      } catch (eventError) {
+        console.error("Provider submission event logging failed:", eventError);
+      }
+
       return NextResponse.json({ ok: true, order: updated });
     } catch {
       await db.update(orders).set({ status: "failed", errorMessage: "Upstream provider submission failed.", updatedAt: new Date() }).where(eq(orders.id, order.id));
