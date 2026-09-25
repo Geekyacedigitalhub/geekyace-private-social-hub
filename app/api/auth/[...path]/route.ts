@@ -36,7 +36,11 @@ async function enforcePrivateAuth(request: Request) {
   return null;
 }
 
-const authHandler = auth.handler();\n\ntype AuthRouteContext = Parameters<typeof authHandler.POST>[1];\n\nasync function POST(request: Request, context: AuthRouteContext) {
+const authHandler = auth.handler();
+
+type AuthRouteContext = Parameters<typeof authHandler.POST>[1];
+
+async function POST(request: Request, context: AuthRouteContext) {
   const blocked = await enforcePrivateAuth(request);
   if (blocked) return blocked;
   return authHandler.POST(request, context);
