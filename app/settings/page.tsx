@@ -1,25 +1,4 @@
 "use client";
-
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, LockKeyhole, Server, ShieldCheck } from "lucide-react";
-
-type Settings = { privateMode:boolean; ownerEmailConfigured:boolean; providerConfigured:boolean; syncConfigured:boolean; environment:string };
-
-export default function SettingsPage() {
-  const [settings,setSettings]=useState<Settings|null>(null);
-  useEffect(()=>{fetch("/api/settings").then(r=>r.json()).then(setSettings).catch(()=>setSettings(null));},[]);
-  const items = settings ? [
-    ["Private access", settings.privateMode, LockKeyhole],
-    ["Owner allowlist", settings.ownerEmailConfigured, ShieldCheck],
-    ["Provider credentials", settings.providerConfigured, Server],
-    ["Automatic sync secret", settings.syncConfigured, ShieldCheck],
-  ] as const : [];
-  return <main className="min-h-screen bg-slate-50"><div className="mx-auto max-w-5xl p-5 sm:p-8">
-    <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-700"><ArrowLeft size={16}/> Dashboard</Link>
-    <h1 className="mt-5 text-2xl font-bold text-slate-900">Settings</h1>
-    <p className="mt-1 text-sm text-slate-500">Private deployment configuration and security status. Secrets are never displayed.</p>
-    <section className="mt-6 grid gap-4 sm:grid-cols-2">{items.map(([label,ready,Icon])=><div key={label} className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-3"><Icon size={18} className="text-emerald-600"/><p className="font-semibold text-slate-900">{label}</p></div><p className={"mt-3 text-sm font-medium "+(ready?"text-emerald-700":"text-amber-700")}>{ready?"Configured":"Needs configuration"}</p></div>)}</section>
-    {settings ? <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Environment: <span className="font-medium text-slate-900">{settings.environment}</span></div> : null}
-  </div></main>;
-}
+import Link from "next/link"; import {useEffect,useState} from "react"; import {ArrowLeft,CheckCircle2,LockKeyhole,Server,ShieldCheck,Settings as SettingsIcon} from "lucide-react";
+type Settings={privateMode:boolean;ownerEmailConfigured:boolean;providerConfigured:boolean;syncConfigured:boolean;environment:string};
+export default function SettingsPage(){const[s,setS]=useState<Settings|null>(null);useEffect(()=>{fetch("/api/settings",{cache:"no-store"}).then(r=>r.json()).then(setS).catch(()=>setS(null))},[]);const items=s?[["Private access",s.privateMode,LockKeyhole],["Owner allowlist",s.ownerEmailConfigured,ShieldCheck],["Provider credentials",s.providerConfigured,Server],["Automatic sync",s.syncConfigured,CheckCircle2]] as const:[];return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-5xl p-5 sm:p-8 xl:p-10"><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><header className="mt-6"><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><SettingsIcon size={13}/> System</div><h1 className="mt-2 text-3xl font-semibold text-white">Settings</h1><p className="mt-2 text-sm text-slate-500">Private deployment configuration and security readiness. Secrets are never displayed.</p></header><section className="mt-8 grid gap-4 sm:grid-cols-2">{items.map(([label,ready,Icon])=><div key={label} className="gx-card gx-card-hover rounded-2xl p-5"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400/[0.07]"><Icon size={18} className="text-emerald-300"/></div><p className="font-semibold text-white">{label}</p></div><p className={"mt-5 text-xs font-bold uppercase tracking-[.14em] "+(ready?"text-emerald-300":"text-amber-300")}>{ready?"Configured":"Needs configuration"}</p></div>)}</section>{s?<div className="gx-card mt-5 rounded-2xl p-5"><p className="text-xs text-slate-600">Environment</p><p className="mt-2 text-lg font-semibold text-white">{s.environment}</p><p className="mt-2 text-xs text-slate-500">Configuration values are read server-side and are intentionally not exposed here.</p></div>:null}</div></main>}
