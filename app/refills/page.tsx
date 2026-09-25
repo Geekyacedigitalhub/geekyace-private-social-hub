@@ -1,52 +1,5 @@
 "use client";
-
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
-
-type Refill = {
-  id: string;
-  orderId: string;
-  providerRefillId: string | null;
-  status: string;
-  createdAt: string;
-};
-
-export default function RefillsPage() {
-  const [refills, setRefills] = useState<Refill[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    const response = await fetch("/api/refills", { cache: "no-store" });
-    const data = await response.json();
-    setRefills(data.refills ?? []);
-    setLoading(false);
-  }
-
-  useEffect(() => { void load(); }, []);
-
-  return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl p-5 sm:p-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-700">
-          <ArrowLeft size={16} /> Dashboard
-        </Link>
-        <div className="mt-5 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Refills</h1>
-            <p className="mt-1 text-sm text-slate-500">Track provider-supported refill records and retention checks.</p>
-          </div>
-          <button onClick={() => { setLoading(true); void load(); }} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-            <RefreshCw size={15} /> Refresh
-          </button>
-        </div>
-
-        <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {loading ? <div className="p-8 text-sm text-slate-500">Loading refills...</div> :
-          !refills.length ? <div className="p-10 text-center"><p className="font-semibold text-slate-900">No refill records</p><p className="mt-1 text-sm text-slate-500">Refill records will appear when a supported provider operation creates them.</p></div> :
-          <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Refill</th><th className="px-4 py-3">Order</th><th className="px-4 py-3">Provider refill</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Created</th></tr></thead><tbody className="divide-y divide-slate-100">{refills.map((item) => <tr key={item.id}><td className="px-4 py-4 font-medium">{item.id.slice(0, 8)}</td><td className="px-4 py-4">{item.orderId.slice(0, 8)}</td><td className="px-4 py-4">{item.providerRefillId ?? "—"}</td><td className="px-4 py-4 capitalize">{item.status}</td><td className="px-4 py-4 text-slate-500">{new Date(item.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>}
-        </section>
-      </div>
-    </main>
-  );
-}
+import Link from "next/link"; import {useEffect,useState} from "react"; import {ArrowUpRight,RefreshCw,RotateCcw} from "lucide-react";
+type Refill={id:string;orderId:string;providerRefillId:string|null;status:string;createdAt:string};
+const tone=(s:string)=>s==="completed"?"text-emerald-300 bg-emerald-400/10 border-emerald-400/15":s==="failed"?"text-rose-300 bg-rose-400/10 border-rose-400/15":"text-amber-300 bg-amber-400/10 border-amber-400/15";
+export default function RefillsPage(){const[r,setR]=useState<Refill[]>([]),[loading,setLoading]=useState(true);async function load(){setLoading(true);try{const x=await fetch("/api/refills",{cache:"no-store"}),d=await x.json();setR(d.refills??[])}finally{setLoading(false)}}useEffect(()=>{void load()},[]);return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10"><header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between"><div><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><div className="mt-5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><RotateCcw size={13}/> Retention</div><h1 className="mt-2 text-3xl font-semibold text-white">Refills</h1><p className="mt-2 text-sm text-slate-500">Track provider-supported refill operations and their current state.</p></div><button onClick={()=>void load()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/[0.06]"><RefreshCw size={15}/> Refresh</button></header><section className="gx-card mt-8 overflow-hidden rounded-2xl">{loading?<div className="p-10 text-sm text-slate-500">Loading refill records...</div>:!r.length?<div className="p-14 text-center"><RotateCcw className="mx-auto text-emerald-400" size={30}/><p className="mt-4 font-semibold text-white">No refill records</p><p className="mt-2 text-sm text-slate-600">Supported refill operations will appear here.</p></div>:<div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-[.16em] text-slate-600"><tr><th className="px-5 py-4">Refill</th><th className="px-5 py-4">Order</th><th className="px-5 py-4">Provider reference</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Created</th><th/></tr></thead><tbody className="divide-y divide-white/[0.045]">{r.map(x=><tr key={x.id} className="hover:bg-white/[0.025]"><td className="px-5 py-5 font-semibold text-white">{x.id.slice(0,8)}</td><td className="px-5 py-5 text-slate-400">{x.orderId.slice(0,8)}</td><td className="px-5 py-5 text-slate-500">{x.providerRefillId??"—"}</td><td className="px-5 py-5"><span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold capitalize "+tone(x.status)}>{x.status}</span></td><td className="px-5 py-5 text-xs text-slate-600">{new Date(x.createdAt).toLocaleString()}</td><td className="px-5 py-5"><ArrowUpRight size={14} className="text-slate-700"/></td></tr>)}</tbody></table></div>}</section></div></main>}
