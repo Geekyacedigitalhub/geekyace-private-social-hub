@@ -79,7 +79,7 @@ export async function POST(request: Request) {
         await recordSyncEvent(order.id, "automatic_status_check_skipped", "Automatic synchronization skipped because the assigned provider is unavailable.");
         continue;
       }
-      const provider = createProviderAdapter({ name: providerRow.name, baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
+      const provider = createProviderAdapter({ name: providerRow.name, baseUrl: providerRow.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
       let status;
       try {
         status = await provider.getOrderStatus(providerOrderId);
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
 
       const provider = createProviderAdapter({
         name: providerRow.name,
-        baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
+        baseUrl: providerRow.baseUrl,
         apiKey: process.env.PROVIDER_API_KEY ?? "",
       });
 
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, checked: active.length, updated, skippedProvider, providerFailures, unknownStatuses, refillsChecked: activeRefills.length, refillsUpdated });
+    return NextResponse.json({ ok: true, checked: active.length, updated, skippedProvider, providerFailures, unknownStatuses, refillsChecked: activeRefills.length, refillsUpdated }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Order synchronization failed:", error);
     return NextResponse.json({ ok: false, error: "Order synchronization failed." }, { status: 500 });
