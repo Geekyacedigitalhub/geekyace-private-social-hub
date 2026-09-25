@@ -4,10 +4,13 @@ import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
 import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { requireOwner } from "@/lib/auth/require-owner";
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, "provider-health-read", 20);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+  const denied = await requireOwner();
+  if (denied) return denied;
   try {
     const rows = await db
       .select()
@@ -27,6 +30,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const limited = rateLimit(request, "provider-health", 10);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+  const denied = await requireOwner();
+  if (denied) return denied;
   const providerName = process.env.PROVIDER_NAME ?? "Configured provider";
   const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
   const apiKey = process.env.PROVIDER_API_KEY ?? "";
