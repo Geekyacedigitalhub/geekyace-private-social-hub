@@ -71,6 +71,7 @@ export async function POST(request: Request) {
 
 function inferPlatformName(category?: string, serviceName?: string) {
   const value = `${category ?? ""} ${serviceName ?? ""}`.toLowerCase();
+  if (/(^|\\s)x(\\s|$)/.test(value)) return "X";
   const platforms = [
     ["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube"], ["facebook", "Facebook"],
     ["twitter", "X"], [" x ", "X"], ["linkedin", "LinkedIn"], ["threads", "Threads"], ["telegram", "Telegram"],
