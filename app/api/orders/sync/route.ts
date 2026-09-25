@@ -69,11 +69,15 @@ export async function POST(request: Request) {
           await db.update(orders)
             .set({ status: "processing", providerOrderId, updatedAt: new Date() })
             .where(eq(orders.id, order.id));
-          await db.insert(orderEvents).values({
-            orderId: order.id,
-            eventType: "provider_submission_recovered",
-            message: "Recovered upstream provider order ID from the submission event.",
-          });
+          try {
+            await db.insert(orderEvents).values({
+              orderId: order.id,
+              eventType: "provider_submission_recovered",
+              message: "Recovered upstream provider order ID from the submission event.",
+            });
+          } catch (eventError) {
+            console.error("Provider recovery event logging failed:", eventError);
+          }
         }
       }
 
@@ -118,12 +122,16 @@ export async function POST(request: Request) {
         status.remains !== order.remains;
 
       if (changed) {
-        await db.insert(orderEvents).values({
-          orderId: order.id,
-          eventType: "automatic_status_check",
-          message: "Automatic provider status synchronization changed the order.",
-          payload: { providerStatus: status.status, previousStatus: order.status, nextStatus },
-        });
+        try {
+          await db.insert(orderEvents).values({
+            orderId: order.id,
+            eventType: "automatic_status_check",
+            message: "Automatic provider status synchronization changed the order.",
+            payload: { providerStatus: status.status, previousStatus: order.status, nextStatus },
+          });
+        } catch (eventError) {
+          console.error("Automatic status event logging failed:", eventError);
+        }
       }
       if (changed) updated++;
     }
@@ -161,12 +169,16 @@ export async function POST(request: Request) {
             completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
           }).where(eq(refills.id, refill.id));
 
-          await db.insert(orderEvents).values({
-            orderId: refill.orderId,
-            eventType: "automatic_refill_status_check",
-            message: "Provider refill status changed.",
-            payload: { providerStatus, previousStatus: refill.status },
-          });
+          try {
+            await db.insert(orderEvents).values({
+              orderId: refill.orderId,
+              eventType: "automatic_refill_status_check",
+              message: "Provider refill status changed.",
+              payload: { providerStatus, previousStatus: refill.status },
+            });
+          } catch (eventError) {
+            console.error("Automatic refill status event logging failed:", eventError);
+          }
           refillsUpdated++;
         }
       } catch {
