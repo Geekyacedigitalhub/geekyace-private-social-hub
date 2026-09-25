@@ -39,11 +39,13 @@ export async function POST(request: Request) {
   const secret = process.env.INTERNAL_SYNC_SECRET;
   if (!secret || request.headers.get("x-sync-secret") !== secret) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
-    const activeCountResult = await db.select({ count: count() }).from(orders).where(inArray(orders.status, ["pending", "processing"]));
-    const activeCount = Number(activeCountResult.at(0)?.count ?? 0);
-    const orderPages = Math.max(1, Math.ceil(activeCount / 100));
-    const orderPage = Math.floor(Date.now() / (15 * 60 * 1000)) % orderPages;
-    const active = await db.select().from(orders).where(inArray(orders.status, ["pending", "processing"])).orderBy(asc(orders.updatedAt)).limit(100).offset(orderPage * 100);
+    // Always take the oldest active orders. Each checked order has its
+    // updatedAt refreshed below, so the next run naturally advances through
+    // the active set without offset pagination skipping rows as ordering shifts.
+    const active = await db.select().from(orders)
+      .where(inArray(orders.status, ["pending", "processing"]))
+      .orderBy(asc(orders.updatedAt))
+      .limit(100);
     let updated = 0;
     let skippedProvider = 0;
     let providerFailures = 0;
