@@ -40,7 +40,8 @@ export class GenericPanelProvider implements ProviderAdapter {
       const body: string = await response.text();
       if (body.length > 2_000_000) throw new Error("Provider response exceeded the maximum allowed size.");
       try {
-        return JSON.parse(body) as T;
+        const parsed: unknown = JSON.parse(body);
+        return parsed as T;
       } catch {
         throw new Error("Provider returned an invalid JSON response.");
       }
