@@ -61,12 +61,16 @@ export async function POST(request: Request) {
     }).where(eq(orders.id, order.id)).returning()).at(0);
 
     if (changed) {
-      await db.insert(orderEvents).values({
-        orderId: order.id,
-        eventType: "status_check",
-        message: "Provider status changed.",
-        payload: { providerStatus: status.status },
-      });
+      try {
+        await db.insert(orderEvents).values({
+          orderId: order.id,
+          eventType: "status_check",
+          message: "Provider status changed.",
+          payload: { providerStatus: status.status },
+        });
+      } catch (eventError) {
+        console.error("Order status event logging failed:", eventError);
+      }
     }
 
     return NextResponse.json(
