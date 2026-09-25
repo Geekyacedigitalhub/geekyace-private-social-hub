@@ -1,33 +1,5 @@
 "use client";
-
 import { useActionState } from "react";
 import { signUp } from "./actions";
-
-export default function SignUpPage() {
-  const [state, formAction, pending] = useActionState(signUp, null);
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <form action={formAction} className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold text-emerald-600">GeekyAce</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Create owner account</h1>
-        <p className="mt-2 text-sm text-slate-500">This route is restricted to the configured owner email.</p>
-
-        <label className="mt-6 block text-sm font-medium text-slate-700" htmlFor="name">Name</label>
-        <input id="name" name="name" required className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" />
-
-        <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" required className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" />
-
-        <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" minLength={12} required className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" />
-
-        {state?.error ? <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p> : null}
-
-        <button type="submit" disabled={pending} className="mt-6 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-          {pending ? "Creating..." : "Create owner account"}
-        </button>
-      </form>
-    </main>
-  );
-}
+import { KeyRound, ShieldCheck, Sparkles } from "lucide-react";
+export default function SignUpPage(){const[state,formAction,pending]=useActionState(signUp,null);return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#06100c] p-6"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(16,185,129,.12),transparent_34%)]"/><div className="relative w-full max-w-[430px]"><div className="mb-6 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-emerald-300 to-teal-700 text-xl font-black text-[#06100c] shadow-[0_0_40px_rgba(52,211,153,.18)]">G</div><p className="mt-4 text-[10px] font-bold uppercase tracking-[.28em] text-emerald-400">GeekyAce</p><h1 className="mt-2 text-2xl font-semibold text-white">Create owner account</h1><p className="mt-2 text-sm text-slate-500">Initial setup for the private control center.</p></div><form action={formAction} className="gx-card rounded-3xl p-7 sm:p-8"><div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.05] px-3 py-2.5 text-xs text-slate-400"><ShieldCheck size={15} className="text-emerald-300"/> Restricted to the configured owner email</div><label className="block text-xs font-semibold text-slate-400" htmlFor="name">Name</label><input id="name" name="name" required className="mt-2 w-full rounded-xl border border-white/[0.08] bg-black/15 px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50"/><label className="mt-5 block text-xs font-semibold text-slate-400" htmlFor="email">Email</label><input id="email" name="email" type="email" required className="mt-2 w-full rounded-xl border border-white/[0.08] bg-black/15 px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50"/><label className="mt-5 block text-xs font-semibold text-slate-400" htmlFor="password">Password</label><input id="password" name="password" type="password" minLength={12} required autoComplete="new-password" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-black/15 px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50"/><p className="mt-2 text-[11px] text-slate-600">Use at least 12 characters.</p>{state?.error?<p className="mt-4 rounded-xl border border-rose-400/15 bg-rose-400/[0.06] px-3 py-2.5 text-xs text-rose-300">{state.error}</p>:null}<button type="submit" disabled={pending} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-[#06100c] disabled:opacity-50"><KeyRound size={15}/>{pending?"Creating...":"Create owner account"}</button></form><p className="mt-5 text-center text-[11px] text-slate-700"><Sparkles size={11} className="mr-1 inline text-emerald-500"/> Private setup — public registration remains disabled.</p></div></main>}
