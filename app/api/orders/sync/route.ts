@@ -72,7 +72,20 @@ export async function POST(request: Request) {
         remains: status.remains,
         updatedAt: new Date(),
       }).where(eq(orders.id, order.id));
-      await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check", message: "Automatic provider status synchronization completed.", payload: { providerStatus: status.status } });
+      const changed = nextStatus !== order.status ||
+        status.startCount !== order.startCount ||
+        status.currentCount !== order.currentCount ||
+        status.completedQuantity !== order.completedQuantity ||
+        status.remains !== order.remains;
+
+      if (changed) {
+        await db.insert(orderEvents).values({
+          orderId: order.id,
+          eventType: "automatic_status_check",
+          message: "Automatic provider status synchronization changed the order.",
+          payload: { providerStatus: status.status, previousStatus: order.status, nextStatus },
+        });
+      }
       updated++;
     }
     const activeRefills = await db.select().from(refills).where(inArray(refills.status, ["requested", "processing"]));
