@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimit(request, "refills-read", 30);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const rows = await db.select().from(refills).orderBy(refills.createdAt);
     return NextResponse.json({ refills: rows });
