@@ -138,20 +138,34 @@ export async function POST(request: Request) {
       );
     }
 
-    const inserted = (
-      await db
-        .update(refills)
-        .set({
-          providerRefillId: created.providerRefillId,
-          status: "requested",
-          requestedAt: new Date(),
-        })
-        .where(eq(refills.id, claim.id))
-        .returning()
-    ).at(0);
+    let inserted;
+    for (let attempt = 0; attempt < 3 && !inserted; attempt += 1) {
+      try {
+        inserted = (
+          await db
+            .update(refills)
+            .set({
+              providerRefillId: created.providerRefillId,
+              status: "requested",
+              requestedAt: new Date(),
+            })
+            .where(eq(refills.id, claim.id))
+            .returning()
+        ).at(0);
+      } catch (syncError) {
+        console.error("Refill claim update failed after provider submission:", {
+          claimId: claim.id,
+          attempt: attempt + 1,
+          error: syncError,
+        });
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+        }
+      }
+    }
 
     if (!inserted) {
-      console.error("Refill claim update failed after provider submission:", claim.id);
+      console.error("Refill claim update could not be synchronized after provider submission:", claim.id);
       return NextResponse.json(
         {
           ok: false,
