@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (!order) throw new Error("Order record could not be created.");
     await db.insert(orderEvents).values({ orderId: order.id, eventType: "created", message: "Local order created; awaiting upstream provider submission." });
     try {
-      const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
+      const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
       const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
       await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submitted", message: "Order submitted to upstream provider.", payload: { providerOrderId: created.providerOrderId } });
 
