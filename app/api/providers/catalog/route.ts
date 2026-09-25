@@ -124,6 +124,26 @@ export async function POST(request: Request) {
         }
         imported++;
       }
+
+      // A successful, non-empty catalog is authoritative for this provider.
+      // Deactivate mappings that disappeared from the provider response so
+      // removed services are no longer exposed or orderable locally.
+      const existingMappings = await tx
+        .select({
+          id: providerServices.id,
+          externalServiceId: providerServices.externalServiceId,
+        })
+        .from(providerServices)
+        .where(eq(providerServices.providerId, providerRow.id));
+
+      for (const mapping of existingMappings) {
+        if (!seenExternalIds.has(mapping.externalServiceId)) {
+          await tx
+            .update(providerServices)
+            .set({ active: false })
+            .where(eq(providerServices.id, mapping.id));
+        }
+      }
     });
 
     return NextResponse.json({
