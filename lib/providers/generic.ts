@@ -45,16 +45,19 @@ export class GenericPanelProvider implements ProviderAdapter {
   async getServices(): Promise<ProviderService[]> {
     const result = await this.request<unknown>({ action: "services" });
     if (!Array.isArray(result)) return [];
-    return result.map((item) => {
+    const services: ProviderService[] = [];
+    for (const item of result) {
       const service = item as Record<string, unknown>;
       const min = Number(service.min ?? 0);
       const max = Number(service.max ?? 0);
-      if (!Number.isFinite(min) || !Number.isFinite(max)) {
-        return null;
+      const id = String(service.service ?? "").trim();
+      const name = String(service.name ?? "").trim();
+      if (!Number.isFinite(min) || !Number.isFinite(max) || !id || !name || min <= 0 || max < min) {
+        continue;
       }
-      return {
-        id: String(service.service ?? ""),
-        name: String(service.name ?? ""),
+      services.push({
+        id,
+        name,
         category: service.category ? String(service.category) : undefined,
         type: service.type ? String(service.type) : undefined,
         rate: toNumber(service.rate),
@@ -62,8 +65,9 @@ export class GenericPanelProvider implements ProviderAdapter {
         max,
         refill: Boolean(service.refill),
         cancel: Boolean(service.cancel),
-      };
-    }).filter((service): service is ProviderService => service !== null && service.id.length > 0 && service.name.length > 0 && service.min > 0 && service.max >= service.min);
+      });
+    }
+    return services;
   }
 
   async getBalance(): Promise<ProviderBalance> {
