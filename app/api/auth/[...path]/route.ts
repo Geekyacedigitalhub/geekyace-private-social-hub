@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth/server";
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 const OWNER_EMAIL = () => process.env.PRIVATE_OWNER_EMAIL?.trim().toLowerCase() ?? "";
 
@@ -44,6 +45,9 @@ const authHandler = auth.handler();
 type AuthRouteContext = Parameters<typeof authHandler.POST>[1];
 
 async function POST(request: Request, context: AuthRouteContext) {
+  const limited = rateLimit(request, "auth-post", 10);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+
   const blocked = await enforcePrivateAuth(request);
   if (blocked) return blocked;
   return authHandler.POST(request, context);
