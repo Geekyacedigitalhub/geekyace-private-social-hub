@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 export async function GET() {
   try {
@@ -15,6 +16,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "refill-create", 10);
+    if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
