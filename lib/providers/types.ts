@@ -8,7 +8,6 @@ export type ProviderService = {
   max: number;
   refill?: boolean;
   cancel?: boolean;
-  raw?: unknown;
 };
 
 export type ProviderOrderRequest = {
@@ -17,10 +16,7 @@ export type ProviderOrderRequest = {
   quantity: number;
 };
 
-export type ProviderOrderResponse = {
-  providerOrderId: string;
-  raw?: unknown;
-};
+export type ProviderOrderResponse = { providerOrderId: string };
 
 export type ProviderOrderStatus = {
   status: "pending" | "processing" | "completed" | "partial" | "failed" | "cancelled" | "unknown";
@@ -28,14 +24,11 @@ export type ProviderOrderStatus = {
   currentCount?: number;
   completedQuantity?: number;
   remains?: number;
-  raw?: unknown;
 };
 
-export type ProviderBalance = {
-  balance: number;
-  currency: string;
-  raw?: unknown;
-};
+export type ProviderBalance = { balance: number; currency: string };
+
+export type ProviderRefillResponse = { providerRefillId: string };
 
 export interface ProviderAdapter {
   getServices(): Promise<ProviderService[]>;
@@ -43,5 +36,6 @@ export interface ProviderAdapter {
   createOrder(request: ProviderOrderRequest): Promise<ProviderOrderResponse>;
   getOrderStatus(providerOrderId: string): Promise<ProviderOrderStatus>;
   cancelOrder?(providerOrderId: string): Promise<unknown>;
+  requestRefill?(providerOrderId: string): Promise<ProviderRefillResponse>;
   getRefillStatus?(refillId: string): Promise<unknown>;
 }
