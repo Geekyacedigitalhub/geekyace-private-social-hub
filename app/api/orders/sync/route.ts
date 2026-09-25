@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   try {
     const active = await db.select().from(orders).where(inArray(orders.status, ["pending", "processing"])).orderBy(asc(orders.updatedAt)).limit(100);
     let updated = 0;
+    let skippedProvider = 0;
     for (const order of active) {
       if (!order.providerId) continue;
 
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       if (!providerOrderId) continue;
       const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
       if (!providerRow?.enabled) {
+        skippedProvider++;
         await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check_skipped", message: "Automatic synchronization skipped because the assigned provider is unavailable." });
         continue;
       }
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, checked: active.length, updated, refillsChecked: activeRefills.length, refillsUpdated });
+    return NextResponse.json({ ok: true, checked: active.length, updated, skippedProvider, refillsChecked: activeRefills.length, refillsUpdated });
   } catch (error) {
     console.error("Order synchronization failed:", error);
     return NextResponse.json({ ok: false, error: "Order synchronization failed." }, { status: 500 });
