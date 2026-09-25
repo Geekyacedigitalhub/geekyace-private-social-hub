@@ -1,9 +1,12 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
 import { platforms, services } from "@/lib/db/schema";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimit(request, "services-read", 30);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const rows = await db
       .select({
