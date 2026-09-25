@@ -49,7 +49,10 @@ export async function POST(request: Request) {
         if (!platformRow) throw new Error("Platform record could not be created.");
       }
       const serviceSlug = (remote.name + "-" + remote.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 240);
-      let serviceRow = (await db.select().from(services).where(eq(services.slug, serviceSlug))).at(0);
+      const existingMapping = (await db.select().from(providerServices).where(eq(providerServices.externalServiceId, remote.id))).find((mapping) => mapping.providerId === providerRow.id);
+      let serviceRow = existingMapping
+        ? (await db.select().from(services).where(eq(services.id, existingMapping.serviceId))).at(0)
+        : (await db.select().from(services).where(eq(services.slug, serviceSlug))).at(0);
       if (!serviceRow) {
         const inserted = await db.insert(services).values({ platformId: platformRow.id, name: remote.name, slug: serviceSlug, description: remote.type ? String(remote.type) : null, minQuantity: remote.min, maxQuantity: remote.max, enabled: true }).returning();
         serviceRow = inserted[0];
@@ -59,7 +62,6 @@ export async function POST(request: Request) {
         serviceRow = updated[0];
         if (!serviceRow) throw new Error("Service record could not be updated.");
       }
-      const existingMapping = (await db.select().from(providerServices).where(eq(providerServices.externalServiceId, remote.id))).find(mapping => mapping.providerId === providerRow.id);
       const values = { providerId: providerRow.id, serviceId: serviceRow.id, externalServiceId: remote.id, pricePerThousand: remote.rate?.toString(), minQuantity: remote.min, maxQuantity: remote.max, refillSupported: Boolean(remote.refill), active: true, metadata: { providerCategory: remote.category ?? null, providerType: remote.type ?? null, refillSupported: Boolean(remote.refill), cancelSupported: Boolean(remote.cancel) } };
       if (existingMapping) await db.update(providerServices).set(values).where(eq(providerServices.id, existingMapping.id));
       else await db.insert(providerServices).values(values);
