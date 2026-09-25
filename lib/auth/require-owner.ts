@@ -10,15 +10,15 @@ export async function requireOwner() {
     );
   }
 
-  const { session, user } = await auth.getSession();
-  if (!session || !user) {
+  const result = await auth.getSession();
+  if (result.error || !result.data?.session || !result.data.user) {
     return NextResponse.json(
       { error: "Authentication is required." },
       { status: 401 },
     );
   }
 
-  if (user.email.trim().toLowerCase() !== ownerEmail) {
+  if (result.data.user.email.trim().toLowerCase() !== ownerEmail) {
     return NextResponse.json(
       { error: "This account is not authorized for this private panel." },
       { status: 403 },
