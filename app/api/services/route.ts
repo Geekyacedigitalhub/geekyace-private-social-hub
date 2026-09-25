@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       ))
       .where(eq(services.enabled, true));
 
-    return NextResponse.json({ services: rows });
+    return NextResponse.json({ services: rows }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Services query failed:", error);
     return NextResponse.json({ error: "Unable to load services." }, { status: 500 });
