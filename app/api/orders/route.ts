@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
@@ -50,7 +51,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimit(request, "orders-read", 30);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const rows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(200);
     return NextResponse.json({ orders: rows });
