@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(100),
     ]);
 
-    return NextResponse.json({ events, audits });
+    return NextResponse.json({ events, audits }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Logs query failed:", error);
     return NextResponse.json({ error: "Unable to load logs." }, { status: 500 });
