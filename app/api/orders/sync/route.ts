@@ -22,12 +22,12 @@ export async function POST(request: Request) {
       try {
         status = await provider.getOrderStatus(order.providerOrderId);
       } catch (providerError) {
-        await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check_failed", message: "Automatic provider status synchronization failed.", payload: { error: providerError instanceof Error ? providerError.message : "Provider request failed." } });
+        await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check_failed", message: "Automatic provider status synchronization failed.", payload: { error: "Provider request failed." } });
         continue;
       }
       if (status.status === "unknown") continue;
       await db.update(orders).set({ status: status.status, startCount: status.startCount, currentCount: status.currentCount, completedQuantity: status.completedQuantity, remains: status.remains, updatedAt: new Date() }).where(eq(orders.id, order.id));
-      await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check", message: "Automatic provider status synchronization completed.", payload: status.raw ? { providerResponse: status.raw } : null });
+      await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check", message: "Automatic provider status synchronization completed.", payload: { providerStatus: status.status } });
       updated++;
     }
     return NextResponse.json({ ok: true, checked: active.length, updated });
