@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { platforms, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -162,16 +162,17 @@ export async function POST(request: Request) {
       }
 
       // A successful, non-empty catalog is authoritative for this provider.
-      // Deactivate mappings that disappeared from the provider response so
-      // removed services are no longer exposed or orderable locally.
-      for (const mapping of existingMappings) {
-        if (!seenExternalIds.has(mapping.externalServiceId)) {
-          await tx
-            .update(providerServices)
-            .set({ active: false })
-            .where(eq(providerServices.id, mapping.id));
-        }
-      }
+      // Deactivate all mappings missing from the response in one statement
+      // instead of issuing one UPDATE per removed service.
+      await tx
+        .update(providerServices)
+        .set({ active: false })
+        .where(
+          and(
+            eq(providerServices.providerId, providerRow.id),
+            notInArray(providerServices.externalServiceId, Array.from(seenExternalIds)),
+          ),
+        );
     });
 
     return NextResponse.json({
