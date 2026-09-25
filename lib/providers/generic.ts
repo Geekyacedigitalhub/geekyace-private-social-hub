@@ -63,7 +63,10 @@ export class GenericPanelProvider implements ProviderAdapter {
 
   async getBalance(): Promise<ProviderBalance> {
     const result = await this.request<Record<string, unknown>>({ action: "balance" });
-    return { balance: Number(result.balance ?? 0), currency: String(result.currency ?? "USD") };
+    const balance = Number(result.balance ?? 0);
+    if (!Number.isFinite(balance) || balance < 0) throw new Error("Provider returned an invalid balance.");
+    const currency = String(result.currency ?? "USD").trim().slice(0, 16) || "USD";
+    return { balance, currency };
   }
 
   async createOrder(request: ProviderOrderRequest): Promise<ProviderOrderResponse> {
