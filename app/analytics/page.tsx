@@ -7,7 +7,9 @@ import { ArrowUpRight, BarChart3, TrendingUp, RefreshCw } from "lucide-react";
 type Stats = { totalOrders:number; activeOrders:number; completedOrders:number; failedOrders:number; refillRecords:number; events:number; totalQuantity:number };
 
 export default function AnalyticsPage(){
-  const [s,setS]=useState<Stats|null>(null);\n  const [loading,setLoading]=useState(true);\n  async function load(){setLoading(true);try{const r=await fetch("/api/analytics",{cache:"no-store"});setS(await r.json())}finally{setLoading(false)}}
+  const [s,setS]=useState<Stats|null>(null);
+  const [loading,setLoading]=useState(true);
+  async function load(){setLoading(true);try{const r=await fetch("/api/analytics",{cache:"no-store"});setS(await r.json())}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
   const cards=useMemo(()=>s?[
     ["Total orders",s.totalOrders,100],
