@@ -19,7 +19,11 @@ export class GenericPanelProvider implements ProviderAdapter {
     this.baseUrl = config.baseUrl.trim().replace(/\/$/, "");
     this.apiKey = config.apiKey.trim();
     if (!this.baseUrl || !this.apiKey || this.baseUrl.length > 2048) throw new Error("Provider configuration is invalid.");
-    this.timeoutMs = config.timeoutMs ?? 15000;
+    const timeoutMs = config.timeoutMs ?? 15000;
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 1000 || timeoutMs > 30000) {
+      throw new Error("Provider timeout configuration is invalid.");
+    }
+    this.timeoutMs = timeoutMs;
   }
 
   private async request<T>(requestBody: Record<string, string | number>): Promise<T> {
