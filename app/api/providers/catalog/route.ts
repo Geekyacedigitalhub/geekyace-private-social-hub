@@ -84,7 +84,7 @@ function inferPlatformName(category?: string, serviceName?: string) {
   if (/(^|\s)x(\s|$)/.test(value)) return "X";
   const platforms = [
     ["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube"], ["facebook", "Facebook"],
-    ["twitter", "X"], [" x ", "X"], ["linkedin", "LinkedIn"], ["threads", "Threads"], ["telegram", "Telegram"],
+    ["twitter", "X"], ["linkedin", "LinkedIn"], ["threads", "Threads"], ["telegram", "Telegram"],
     ["discord", "Discord"], ["reddit", "Reddit"], ["twitch", "Twitch"], ["pinterest", "Pinterest"],
     ["spotify", "Spotify"], ["snapchat", "Snapchat"],
   ] as const;
