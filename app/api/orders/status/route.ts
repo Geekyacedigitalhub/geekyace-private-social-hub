@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -29,7 +29,17 @@ export async function POST(request: Request) {
     const terminal=new Set(["completed","failed","cancelled"]);
     const nextStatus=status.status==="unknown"||terminal.has(order.status)&&order.status!==status.status?order.status:status.status;
     const changed=nextStatus!==order.status||status.startCount!==order.startCount||status.currentCount!==order.currentCount||status.completedQuantity!==order.completedQuantity||status.remains!==order.remains;
-    const updated=(await db.update(orders).set({status:nextStatus,startCount:status.startCount,currentCount:status.currentCount,completedQuantity:status.completedQuantity,remains:status.remains,updatedAt:new Date()}).where(eq(orders.id,order.id)).returning()).at(0);
+    const updated=(await db.update(orders).set({status:nextStatus,startCount:status.startCount,currentCount:status.currentCount,completedQuantity:status.completedQuantity,remains:status.remains,updatedAt:new Date()}).where(and(
+      eq(orders.id,order.id),
+      notInArray(orders.status, ["completed","failed","cancelled"]),
+    )).returning()).at(0);
+
+    if(!updated){
+      const current=(await db.select().from(orders).where(eq(orders.id,order.id))).at(0);
+      if(!current) return NextResponse.json({error:"Order not found."},{status:404});
+      return NextResponse.json({ok:true,order:current,providerStatus:status.status,reconciled:false},{headers:{"Cache-Control":"no-store, max-age=0"}});
+    }
+
     if(changed){try{await db.insert(orderEvents).values({orderId:order.id,eventType:"status_check",message:"Provider status changed.",payload:{providerStatus:status.status}});}catch(eventError){console.error("Order status event logging failed:",eventError);}}
     return NextResponse.json({ok:true,order:updated,providerStatus:status.status},{headers:{"Cache-Control":"no-store, max-age=0"}});
   } catch(error){console.error("Order status check failed:",error);return NextResponse.json({ok:false,error:"Unable to update order status."},{status:502});}
