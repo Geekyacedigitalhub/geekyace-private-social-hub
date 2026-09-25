@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, exists } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
@@ -11,7 +11,30 @@ export async function GET(request: Request) {
   const denied=await requireOwner();
   if (denied) return denied;
   try {
-    const rows=await db.selectDistinct({id:services.id,name:services.name,platform:platforms.name,min:services.minQuantity,max:services.maxQuantity}).from(services).innerJoin(platforms,eq(services.platformId,platforms.id)).innerJoin(providerServices,and(eq(providerServices.serviceId,services.id),eq(providerServices.active,true))).innerJoin(providers,and(eq(providerServices.providerId,providers.id),eq(providers.enabled,true))).where(eq(services.enabled,true));
+    const rows=await db
+      .select({
+        id: services.id,
+        name: services.name,
+        platform: platforms.name,
+        min: services.minQuantity,
+        max: services.maxQuantity,
+      })
+      .from(services)
+      .innerJoin(platforms, eq(services.platformId, platforms.id))
+      .where(and(
+        eq(services.enabled, true),
+        exists(
+          db
+            .select({ id: providerServices.id })
+            .from(providerServices)
+            .innerJoin(providers, eq(providerServices.providerId, providers.id))
+            .where(and(
+              eq(providerServices.serviceId, services.id),
+              eq(providerServices.active, true),
+              eq(providers.enabled, true),
+            )),
+        ),
+      ));
     return NextResponse.json({services:rows},{headers:{"Cache-Control":"no-store, max-age=0"}});
   } catch(error){console.error("Services query failed:",error);return NextResponse.json({error:"Unable to load services."},{status:500});}
 }
