@@ -2,6 +2,7 @@ type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
 const WINDOW_MS = 60_000;
+const MAX_BUCKETS = 10_000;
 
 function clientKey(request: Request, scope: string) {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -9,8 +10,15 @@ function clientKey(request: Request, scope: string) {
   return `${scope}:${forwarded || real || "unknown"}`;
 }
 
+function pruneExpired(now: number) {
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) buckets.delete(key);
+  }
+}
+
 export function rateLimit(request: Request, scope: string, limit: number) {
   const now = Date.now();
+  if (buckets.size >= MAX_BUCKETS) pruneExpired(now);
   const key = clientKey(request, scope);
   const current = buckets.get(key);
   if (!current || current.resetAt <= now) {
