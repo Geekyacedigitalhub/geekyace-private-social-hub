@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       balance: balance.balance,
       currency: balance.currency,
       serviceCount: services.length,
-    });
+    }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Provider connection test failed:", error);
     return NextResponse.json({ ok: false, error: "Provider connection failed." }, { status: 502 });
