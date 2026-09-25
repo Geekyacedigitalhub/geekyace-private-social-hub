@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providers, refills } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 async function recordSyncEvent(orderId: string, eventType: string, message: string, payload?: Record<string, unknown>) {
   const since = new Date(Date.now() - 60 * 60 * 1000);
@@ -32,6 +33,9 @@ async function recordSyncEvent(orderId: string, eventType: string, message: stri
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "order-sync", 4);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
+
   const secret = process.env.INTERNAL_SYNC_SECRET;
   if (!secret || request.headers.get("x-sync-secret") !== secret) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
