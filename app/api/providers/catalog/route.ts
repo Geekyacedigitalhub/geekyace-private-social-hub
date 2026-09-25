@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { platforms, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
@@ -48,6 +48,29 @@ export async function POST(request: Request) {
         if (!providerRow) throw new Error("Provider record could not be updated.");
       }
 
+      // Prefetch the provider's existing mappings plus all referenced
+      // platforms/services once. This removes several database reads per catalog
+      // row while keeping the existing transactional write semantics intact.
+      const existingMappings = await tx
+        .select()
+        .from(providerServices)
+        .where(eq(providerServices.providerId, providerRow.id));
+      const mappingByExternalId = new Map(existingMappings.map((mapping) => [mapping.externalServiceId, mapping]));
+      const existingServiceIds = existingMappings.map((mapping) => mapping.serviceId);
+      const referencedServices = existingServiceIds.length > 0
+        ? await tx.select().from(services).where(inArray(services.id, existingServiceIds))
+        : [];
+      const serviceById = new Map(referencedServices.map((service) => [service.id, service]));
+      const slugs = remoteServices
+        .map((remote) => (remote.name + "-" + remote.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 240))
+        .filter(Boolean);
+      const slugServices = slugs.length > 0
+        ? await tx.select().from(services).where(inArray(services.slug, slugs))
+        : [];
+      const serviceBySlug = new Map(slugServices.map((service) => [service.slug, service]));
+      const platformRows = await tx.select().from(platforms);
+      const platformBySlug = new Map(platformRows.map((platform) => [platform.slug, platform]));
+
       for (const remote of remoteServices) {
         if (
           !remote.id ||
@@ -72,18 +95,19 @@ export async function POST(request: Request) {
 
         const platformName = inferPlatformName(remote.category, remote.name);
         const platformSlug = platformName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "other";
-        let platformRow = (await tx.select().from(platforms).where(eq(platforms.slug, platformSlug))).at(0);
+        let platformRow = platformBySlug.get(platformSlug);
         if (!platformRow) {
           const inserted = await tx.insert(platforms).values({ name: platformName, slug: platformSlug, enabled: true }).returning();
           platformRow = inserted[0];
           if (!platformRow) throw new Error("Platform record could not be created.");
+          platformBySlug.set(platformSlug, platformRow);
         }
 
         const serviceSlug = (remote.name + "-" + remote.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 240);
-        const existingMapping = (await tx.select().from(providerServices).where(eq(providerServices.externalServiceId, remote.id))).find((mapping) => mapping.providerId === providerRow.id);
+        const existingMapping = mappingByExternalId.get(remote.id);
         let serviceRow = existingMapping
-          ? (await tx.select().from(services).where(eq(services.id, existingMapping.serviceId))).at(0)
-          : (await tx.select().from(services).where(eq(services.slug, serviceSlug))).at(0);
+          ? serviceById.get(existingMapping.serviceId)
+          : serviceBySlug.get(serviceSlug);
 
         if (!serviceRow) {
           const inserted = await tx.insert(services).values({
@@ -97,6 +121,7 @@ export async function POST(request: Request) {
           }).returning();
           serviceRow = inserted[0];
           if (!serviceRow) throw new Error("Service record could not be created.");
+          serviceBySlug.set(serviceSlug, serviceRow);
         } else {
           const updated = await tx.update(services).set({
             platformId: platformRow.id,
@@ -130,7 +155,8 @@ export async function POST(request: Request) {
         if (existingMapping) {
           await tx.update(providerServices).set(values).where(eq(providerServices.id, existingMapping.id));
         } else {
-          await tx.insert(providerServices).values(values);
+          const insertedMapping = (await tx.insert(providerServices).values(values).returning()).at(0);
+          if (insertedMapping) mappingByExternalId.set(remote.id, insertedMapping);
         }
         imported++;
       }
@@ -138,14 +164,6 @@ export async function POST(request: Request) {
       // A successful, non-empty catalog is authoritative for this provider.
       // Deactivate mappings that disappeared from the provider response so
       // removed services are no longer exposed or orderable locally.
-      const existingMappings = await tx
-        .select({
-          id: providerServices.id,
-          externalServiceId: providerServices.externalServiceId,
-        })
-        .from(providerServices)
-        .where(eq(providerServices.providerId, providerRow.id));
-
       for (const mapping of existingMappings) {
         if (!seenExternalIds.has(mapping.externalServiceId)) {
           await tx
