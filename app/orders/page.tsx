@@ -2,115 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Plus, Search, PackageOpen } from "lucide-react";
+import { ArrowUpRight, RefreshCw, Plus, Search, PackageOpen, Activity } from "lucide-react";
 
-type Order = {
-  id: string;
-  target: string;
-  quantity: number;
-  status: string;
-  startCount: number | null;
-  currentCount: number | null;
-  completedQuantity: number | null;
-  remains: number | null;
-  providerOrderId: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+type Order={id:string;target:string;quantity:number;status:string;startCount:number|null;currentCount:number|null;completedQuantity:number|null;remains:number|null;providerOrderId:string|null;createdAt:string;updatedAt:string};
 
-export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+const statusTone=(status:string)=>status==="completed"?"text-emerald-300 bg-emerald-400/10 border-emerald-400/15":status==="failed"?"text-rose-300 bg-rose-400/10 border-rose-400/15":status==="processing"?"text-cyan-300 bg-cyan-400/10 border-cyan-400/15":"text-slate-300 bg-white/[0.04] border-white/[0.08]";
 
-  async function loadOrders() {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/orders", { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Unable to load orders.");
-      setOrders(data.orders ?? []);
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load orders.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function refreshOrder(id: string) {
-    setRefreshing(id);
-    try {
-      const response = await fetch("/api/orders/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: id }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Unable to refresh order.");
-      setOrders((current) => current.map((order) => order.id === id ? data.order : order));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to refresh order.");
-    } finally {
-      setRefreshing(null);
-    }
-  }
-
-  useEffect(() => { void loadOrders(); }, []);
-
-  const filteredOrders = orders.filter((order) => {
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    const needle = query.trim().toLowerCase();
-    return matchesStatus && (!needle || order.id.toLowerCase().includes(needle) || order.target.toLowerCase().includes(needle));
-  });
-
-  return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl p-5 sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-700">
-              <ArrowLeft size={16} /> Dashboard
-            </Link>
-            <h1 className="mt-4 text-2xl font-bold text-slate-900">Orders</h1>
-            <p className="mt-1 text-sm text-slate-500">Track provider-backed orders and refresh their current status.</p>
-          </div>
-          <Link href="/new-order" className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white">
-            <Plus size={16} /> New order
-          </Link>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]"><div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search size={17} className="text-slate-400"/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search order ID or target..." className="w-full bg-transparent py-3 text-sm outline-none"/></div><select value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none"><option value="all">All statuses</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="completed">Completed</option><option value="partial">Partial</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></div>
-
-        <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {loading ? <div className="p-8 text-sm text-slate-500">Loading orders...</div> :
-           error && !orders.length ? <div className="p-8 text-sm text-red-600">{error}</div> :
-           !orders.length ? <div className="p-10 text-center"><PackageOpen className="mx-auto text-emerald-600" size={30}/><p className="mt-3 font-semibold text-slate-900">No orders yet</p><p className="mt-1 text-sm text-slate-500">Create your first provider-backed order when a service mapping is configured.</p></div> : !filteredOrders.length ? <div className="p-10 text-center"><p className="font-semibold text-slate-900">No matching orders</p><p className="mt-1 text-sm text-slate-500">Try a different search or status filter.</p></div> :
-           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
-                <tr><th className="px-4 py-3">Order</th><th className="px-4 py-3">Target</th><th className="px-4 py-3">Quantity</th><th className="px-4 py-3">Progress</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Action</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td className="whitespace-nowrap px-4 py-4"><div className="font-medium text-slate-900">{order.id.slice(0, 8)}</div><div className="text-xs text-slate-400">{new Date(order.createdAt).toLocaleString()}</div></td>
-                    <td className="max-w-xs truncate px-4 py-4 text-slate-600">{order.target}</td>
-                    <td className="px-4 py-4 text-slate-700">{order.quantity.toLocaleString()}</td>
-                    <td className="px-4 py-4 text-slate-600">{order.completedQuantity?.toLocaleString() ?? "—"} completed · {order.remains?.toLocaleString() ?? "—"} remaining</td>
-                    <td className="px-4 py-4"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-700">{order.status}</span></td>
-                    <td className="px-4 py-4"><button onClick={() => void refreshOrder(order.id)} disabled={refreshing === order.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"><RefreshCw size={14} className={refreshing === order.id ? "animate-spin" : ""}/> Refresh</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-           </div>}
-        </section>
-        {error && orders.length ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      </div>
-    </main>
-  );
+export default function OrdersPage(){
+ const [orders,setOrders]=useState<Order[]>([]),[loading,setLoading]=useState(true),[refreshing,setRefreshing]=useState<string|null>(null),[error,setError]=useState(""),[query,setQuery]=useState(""),[statusFilter,setStatusFilter]=useState("all");
+ async function loadOrders(){setLoading(true);try{const r=await fetch("/api/orders",{cache:"no-store"}),d=await r.json();if(!r.ok)throw new Error(d.error??"Unable to load orders.");setOrders(d.orders??[]);setError("");}catch(e){setError(e instanceof Error?e.message:"Unable to load orders.");}finally{setLoading(false);}}
+ async function refreshOrder(id:string){setRefreshing(id);try{const r=await fetch("/api/orders/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:id})}),d=await r.json();if(!r.ok)throw new Error(d.error??"Unable to refresh order.");setOrders(x=>x.map(o=>o.id===id?d.order:o));}catch(e){setError(e instanceof Error?e.message:"Unable to refresh order.");}finally{setRefreshing(null);}}
+ useEffect(()=>{void loadOrders();},[]);
+ const needle=query.trim().toLowerCase(), filtered=orders.filter(o=>(statusFilter==="all"||o.status===statusFilter)&&(!needle||o.id.toLowerCase().includes(needle)||o.target.toLowerCase().includes(needle)));
+ return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10">
+  <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between"><div><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><div className="mt-5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><Activity size={13}/> Operations</div><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Orders</h1><p className="mt-2 text-sm text-slate-500">Track fulfillment, provider progress and current order state.</p></div><Link href="/new-order" className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-[#06100c]"><Plus size={16}/> New order</Link></header>
+  <section className="mt-8 gx-card rounded-2xl p-3"><div className="grid gap-3 md:grid-cols-[1fr_180px]"><div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/10 px-3"><Search size={16} className="text-slate-600"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search order ID or target..." className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-slate-600"/></div><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="rounded-xl border border-white/[0.06] bg-[#0b1913] px-3 py-3 text-sm text-slate-300 outline-none"><option value="all">All statuses</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="completed">Completed</option><option value="partial">Partial</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></div></section>
+  <section className="gx-card mt-4 overflow-hidden rounded-2xl">{loading?<div className="p-10 text-sm text-slate-500">Loading orders...</div>:error&&!orders.length?<div className="p-10 text-sm text-rose-300">{error}</div>:!filtered.length?<div className="p-12 text-center"><PackageOpen className="mx-auto text-emerald-400" size={30}/><p className="mt-4 font-semibold text-white">{orders.length?"No matching orders":"No orders yet"}</p><p className="mt-2 text-sm text-slate-600">{orders.length?"Try another search or status filter.":"Create an order when a service mapping is configured."}</p></div>:
+   <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-white/[0.06] bg-white/[0.018] text-[10px] uppercase tracking-[.16em] text-slate-600"><tr><th className="px-5 py-4">Order</th><th className="px-5 py-4">Target</th><th className="px-5 py-4">Quantity</th><th className="px-5 py-4">Progress</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Action</th></tr></thead><tbody className="divide-y divide-white/[0.045]">{filtered.map(o=>{const done=o.completedQuantity??0,pct=o.quantity?Math.min(100,Math.round(done/o.quantity*100)):0;return <tr key={o.id} className="transition hover:bg-white/[0.025]"><td className="whitespace-nowrap px-5 py-5"><div className="font-semibold text-white">{o.id.slice(0,8)}</div><div className="mt-1 text-[11px] text-slate-600">{new Date(o.createdAt).toLocaleString()}</div></td><td className="max-w-xs truncate px-5 py-5 text-slate-400">{o.target}</td><td className="px-5 py-5 font-medium text-slate-300">{o.quantity.toLocaleString()}</td><td className="min-w-[190px] px-5 py-5"><div className="flex justify-between text-[11px] text-slate-500"><span>{pct}% complete</span><span>{o.remains?.toLocaleString()??"—"} left</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300" style={{width:pct+"%"}}/></div></td><td className="px-5 py-5"><span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold capitalize "+statusTone(o.status)}>{o.status}</span></td><td className="px-5 py-5"><button onClick={()=>void refreshOrder(o.id)} disabled={refreshing===o.id} className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-50"><RefreshCw size={13} className={refreshing===o.id?"animate-spin":""}/> Refresh</button></td></tr>})}</tbody></table></div>}</section>
+  {error&&orders.length?<p className="mt-3 text-xs text-rose-300">{error}</p>:null}
+ </div></main>;
 }
