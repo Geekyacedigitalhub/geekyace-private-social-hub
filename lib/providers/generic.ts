@@ -78,7 +78,7 @@ export class GenericPanelProvider implements ProviderAdapter {
         max < min ||
         rate < 0
       ) {
-        continue;
+        throw new Error("Provider returned a malformed service catalog row.");
       }
       services.push({
         id,
