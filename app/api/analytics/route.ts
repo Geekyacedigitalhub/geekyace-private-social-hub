@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { count, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, orderEvents, refills } from "@/lib/db/schema";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimit(request, "analytics-read", 30);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const [total, active, completed, failed, refillCount, eventCount, quantity] = await Promise.all([
       db.select({ value: count() }).from(orders),
