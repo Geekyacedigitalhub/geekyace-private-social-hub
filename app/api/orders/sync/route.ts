@@ -165,12 +165,12 @@ export async function POST(request: Request) {
           refillsUpdated++;
         }
       } catch {
-        await db.insert(orderEvents).values({
-          orderId: refill.orderId,
-          eventType: "automatic_refill_status_check_failed",
-          message: "Automatic provider refill status synchronization failed.",
-          payload: { error: "Provider request failed." },
-        });
+        await recordSyncEvent(
+          refill.orderId,
+          "automatic_refill_status_check_failed",
+          "Automatic provider refill status synchronization failed.",
+          { error: "Provider request failed." },
+        );
       }
     }
 
