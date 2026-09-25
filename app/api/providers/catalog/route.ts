@@ -56,7 +56,12 @@ export async function POST(request: Request) {
           !Number.isFinite(remote.max) ||
           remote.min <= 0 ||
           remote.max < remote.min
-        ) continue;
+        ) {
+          // A malformed row means the provider response is not trustworthy.
+          // Do not silently skip it: skipped rows would otherwise be treated
+          // as removed and their existing mappings could be deactivated.
+          throw new Error("Provider returned a malformed catalog service.");
+        }
         if (seenExternalIds.has(remote.id)) continue;
         seenExternalIds.add(remote.id);
 
