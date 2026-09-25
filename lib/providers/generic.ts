@@ -59,21 +59,35 @@ export class GenericPanelProvider implements ProviderAdapter {
     const result = await this.request<unknown>({ action: "services" });
     if (!Array.isArray(result)) return [];
     const services: ProviderService[] = [];
-    for (const item of result) {
+    for (const item of result.slice(0, 10_000)) {
       const service = item as Record<string, unknown>;
       const min = Number(service.min ?? 0);
       const max = Number(service.max ?? 0);
       const id = String(service.service ?? "").trim();
       const name = String(service.name ?? "").trim();
-      if (!Number.isFinite(min) || !Number.isFinite(max) || !id || !name || id.length > 256 || name.length > 512 || min <= 0 || max < min) {
+      const rate = toNumber(service.rate);
+      if (
+        !Number.isSafeInteger(min) ||
+        !Number.isSafeInteger(max) ||
+        !Number.isFinite(rate) ||
+        !Number.isSafeInteger(min) ||
+        !Number.isSafeInteger(max) ||
+        !id ||
+        !name ||
+        id.length > 256 ||
+        name.length > 512 ||
+        min <= 0 ||
+        max < min ||
+        rate < 0
+      ) {
         continue;
       }
       services.push({
         id,
         name,
-        category: service.category ? String(service.category) : undefined,
-        type: service.type ? String(service.type) : undefined,
-        rate: toNumber(service.rate),
+        category: service.category ? String(service.category).slice(0, 256) : undefined,
+        type: service.type ? String(service.type).slice(0, 256) : undefined,
+        rate,
         min,
         max,
         refill: Boolean(service.refill),
