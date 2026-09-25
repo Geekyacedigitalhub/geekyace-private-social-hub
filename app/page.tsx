@@ -13,7 +13,7 @@ export default function Dashboard(){
  const [settings,setSettings]=useState<Settings|null>(null);
  const [recentOrders,setRecentOrders]=useState<RecentOrder[]>([]);
  const [loading,setLoading]=useState(true);
- const load=async()=>{setLoading(true);try{const [a,b,c]=await Promise.all([fetch("/api/analytics",{cache:"no-store"}),fetch("/api/settings",{cache:"no-store"}),fetch("/api/orders",{cache:"no-store"})]);setStats(await a.json());setSettings(await b.json());const orders=await c.json();setRecentOrders((orders.orders??[]).slice(0,5));}finally{setLoading(false);}};
+ const load=async()=>{setLoading(true);try{const [a,b,c]=await Promise.all([fetch("/api/analytics",{cache:"no-store"}),fetch("/api/settings",{cache:"no-store"}),fetch("/api/orders?limit=5",{cache:"no-store"})]);setStats(await a.json());setSettings(await b.json());const orders=await c.json();setRecentOrders(orders.orders??[]);}finally{setLoading(false);}};
  useEffect(()=>{void load();},[]);
  const metrics=[
   {label:"Total orders",value:stats?.totalOrders,icon:Package,accent:"from-emerald-400/20 to-transparent",note:"All time"},
