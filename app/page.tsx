@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Activity, ArrowUpRight, BarChart3, CheckCircle2, ClipboardList, Package, Plus, RefreshCw, ShieldCheck, Sparkles, XCircle, Zap } from "lucide-react";
 
 type Stats={totalOrders:number;activeOrders:number;completedOrders:number;failedOrders:number;refillRecords:number;events:number;totalQuantity:number};
+type RecentOrder={id:string;target:string;quantity:number;status:string;completedQuantity:number|null;createdAt:string};
 type Settings={privateMode:boolean;ownerEmailConfigured:boolean;providerConfigured:boolean;syncConfigured:boolean;environment:string};
 
 export default function Dashboard(){
