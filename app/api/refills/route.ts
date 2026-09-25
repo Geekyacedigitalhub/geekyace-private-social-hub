@@ -19,16 +19,36 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
     if (!orderId) return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
+
     const order = (await db.select().from(orders).where(eq(orders.id, orderId))).at(0);
-    if (!order?.providerOrderId || !order.providerId) return NextResponse.json({ error: "Order is not linked to a provider." }, { status: 404 });
+    if (!order?.providerOrderId || !order.providerId) {
+      return NextResponse.json({ error: "Order is not linked to a provider." }, { status: 404 });
+    }
+
     const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
     if (!providerRow?.enabled) return NextResponse.json({ error: "Assigned provider is unavailable." }, { status: 409 });
-    const provider = createProviderAdapter({ name: providerRow.name, baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "", apiKey: process.env.PROVIDER_API_KEY ?? "" });
-    if (!provider.getRefillStatus) return NextResponse.json({ error: "This provider adapter does not expose refill status." }, { status: 409 });
-    const result = await provider.getRefillStatus(order.providerOrderId);
-    return NextResponse.json({ ok: true, result });
+
+    const provider = createProviderAdapter({
+      name: providerRow.name,
+      baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
+      apiKey: process.env.PROVIDER_API_KEY ?? "",
+    });
+
+    if (!provider.requestRefill) {
+      return NextResponse.json({ error: "The configured provider does not support refill requests." }, { status: 409 });
+    }
+
+    const created = await provider.requestRefill(order.providerOrderId);
+    const inserted = (await db.insert(refills).values({
+      orderId: order.id,
+      providerRefillId: created.providerRefillId,
+      status: "requested",
+      requestedAt: new Date(),
+    }).returning()).at(0);
+
+    return NextResponse.json({ ok: true, refill: inserted });
   } catch (error) {
     console.error("Refill request failed:", error);
-    return NextResponse.json({ error: "Refill request failed." }, { status: 502 });
+    return NextResponse.json({ ok: false, error: "Refill request failed." }, { status: 502 });
   }
 }
