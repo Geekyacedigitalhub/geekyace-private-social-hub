@@ -29,7 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The provider assigned to this order is unavailable." }, { status: 409 });
     }
 
-    if (order.providerOrderId.length > 256) {\n      return NextResponse.json({ error: "Provider order ID is invalid." }, { status: 409 });\n    }\n\n    const provider = createProviderAdapter({
+    if (order.providerOrderId.length > 256) {
+      return NextResponse.json({ error: "Provider order ID is invalid." }, { status: 409 });
+    }
+
+    const provider = createProviderAdapter({
       name: providerRow.name,
       baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
       apiKey: process.env.PROVIDER_API_KEY ?? "",
