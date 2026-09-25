@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orderEvents, orders } from "@/lib/db/schema";
+import { orderEvents, orders, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function POST(request: Request) {
@@ -14,13 +14,18 @@ export async function POST(request: Request) {
     }
 
     const order = (await db.select().from(orders).where(eq(orders.id, orderId))).at(0);
-    if (!order || !order.providerOrderId) {
+    if (!order || !order.providerOrderId || !order.providerId) {
       return NextResponse.json({ error: "Order or provider order ID not found." }, { status: 404 });
     }
 
+    const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
+    if (!providerRow?.enabled) {
+      return NextResponse.json({ error: "The provider assigned to this order is unavailable." }, { status: 409 });
+    }
+
     const provider = createProviderAdapter({
-      name: order.providerId ?? "provider",
-      baseUrl: process.env.PROVIDER_API_BASE_URL ?? "",
+      name: providerRow.name,
+      baseUrl: providerRow.baseUrl || process.env.PROVIDER_API_BASE_URL || "",
       apiKey: process.env.PROVIDER_API_KEY ?? "",
     });
 
@@ -43,7 +48,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, order: updated, providerStatus: status.status });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to update order status.";
-    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+    console.error("Order status check failed:", error);
+    return NextResponse.json({ ok: false, error: "Unable to update order status." }, { status: 502 });
   }
 }
