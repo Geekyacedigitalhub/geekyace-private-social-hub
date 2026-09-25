@@ -16,8 +16,9 @@ export class GenericPanelProvider implements ProviderAdapter {
   private readonly timeoutMs: number;
 
   constructor(config: GenericProviderConfig) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, "");
-    this.apiKey = config.apiKey;
+    this.baseUrl = config.baseUrl.trim().replace(/\/$/, "");
+    this.apiKey = config.apiKey.trim();
+    if (!this.baseUrl || !this.apiKey || this.baseUrl.length > 2048) throw new Error("Provider configuration is invalid.");
     this.timeoutMs = config.timeoutMs ?? 15000;
   }
 
@@ -83,7 +84,7 @@ export class GenericPanelProvider implements ProviderAdapter {
       action: "add", service: request.serviceId, link: request.target, quantity: request.quantity,
     });
     const providerOrderId = String(result.order ?? "");
-    if (!providerOrderId) throw new Error("Provider did not return an order ID");
+    if (!providerOrderId || providerOrderId.length > 256) throw new Error("Provider did not return a valid order ID");
     return { providerOrderId };
   }
 
@@ -105,7 +106,7 @@ export class GenericPanelProvider implements ProviderAdapter {
   async requestRefill(providerOrderId: string): Promise<ProviderRefillResponse> {
     const result = await this.request<Record<string, unknown>>({ action: "refill", order: providerOrderId });
     const providerRefillId = String(result.refill ?? result.id ?? "");
-    if (!providerRefillId) throw new Error("Provider did not return a refill ID");
+    if (!providerRefillId || providerRefillId.length > 256) throw new Error("Provider did not return a valid refill ID");
     return { providerRefillId };
   }
 
