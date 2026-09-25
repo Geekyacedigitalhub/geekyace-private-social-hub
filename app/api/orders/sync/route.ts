@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       // Only update orders that are still active. A concurrent manual status
       // check can finalize an order while this provider request is in flight;
       // never let a stale sync response overwrite that terminal state.
-      await db.update(orders).set({
+      const updatedOrder = (await db.update(orders).set({
         status: nextStatus,
         startCount: status.startCount,
         currentCount: status.currentCount,
@@ -141,7 +141,13 @@ export async function POST(request: Request) {
       }).where(and(
         eq(orders.id, order.id),
         inArray(orders.status, ["pending", "processing"]),
-      ));
+      )).returning({ id: orders.id })).at(0);
+
+      // A concurrent worker may have finalized the order while the provider
+      // request was in flight. Only report/log the synchronization if this
+      // update actually won the race.
+      if (!updatedOrder) continue;
+
       const changed = nextStatus !== order.status ||
         status.startCount !== order.startCount ||
         status.currentCount !== order.currentCount ||
@@ -196,13 +202,18 @@ export async function POST(request: Request) {
         if (refillChanged) {
           // Do not let a stale provider response move a refill backward after
           // another worker has already finalized it.
-          await db.update(refills).set({
+          const updatedRefill = (await db.update(refills).set({
             status: providerStatus,
             completedAt: providerStatus === "completed" || providerStatus === "failed" ? new Date() : refill.completedAt,
           }).where(and(
             eq(refills.id, refill.id),
             inArray(refills.status, ["requested", "processing"]),
-          ));
+          )).returning({ id: refills.id })).at(0);
+
+          // Another worker may have finalized the refill while the provider
+          // request was in flight. Do not emit a stale change event or count
+          // an update that did not actually commit.
+          if (!updatedRefill) continue;
 
           try {
             await db.insert(orderEvents).values({
