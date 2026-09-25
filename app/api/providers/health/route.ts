@@ -12,8 +12,6 @@ export async function GET(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
-  const originDenied = requireSameOrigin(request);
-  if (originDenied) return originDenied;
   try {
     const rows = await db
       .select()
@@ -35,6 +33,8 @@ export async function POST(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
+  const originDenied = requireSameOrigin(request);
+  if (originDenied) return originDenied;
   const providerName = process.env.PROVIDER_NAME ?? "Configured provider";
   const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
   const apiKey = process.env.PROVIDER_API_KEY ?? "";

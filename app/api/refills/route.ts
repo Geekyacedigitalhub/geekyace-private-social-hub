@@ -12,8 +12,6 @@ export async function GET(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
-  const originDenied = requireSameOrigin(request);
-  if (originDenied) return originDenied;
   try {
     const rows = await db.select().from(refills).orderBy(desc(refills.createdAt)).limit(200);
     return NextResponse.json(
@@ -31,6 +29,8 @@ export async function POST(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const denied = await requireOwner();
   if (denied) return denied;
+  const originDenied = requireSameOrigin(request);
+  if (originDenied) return originDenied;
   try {
     const body = (await request.json()) as { orderId?: string };
     const orderId = String(body.orderId ?? "").trim();
