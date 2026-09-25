@@ -50,23 +50,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Provider order ID is invalid." }, { status: 409 });
     }
 
-    const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
-    if (!providerRow?.enabled) {
-      return NextResponse.json({ error: "Assigned provider is unavailable." }, { status: 409 });
-    }
-
-    const mapping = (
+    // Resolve the assigned provider and active service mapping in one joined
+    // query instead of two sequential database round-trips.
+    const providerMapping = (
       await db
-        .select()
+        .select({ provider: providers, mapping: providerServices })
         .from(providerServices)
+        .innerJoin(providers, eq(providerServices.providerId, providers.id))
         .where(
           and(
             eq(providerServices.providerId, order.providerId),
             eq(providerServices.serviceId, order.serviceId),
             eq(providerServices.active, true),
+            eq(providers.enabled, true),
           ),
         )
     ).at(0);
+    const providerRow = providerMapping?.provider;
+    if (!providerRow) {
+      return NextResponse.json({ error: "Assigned provider is unavailable." }, { status: 409 });
+    }
+
+    const mapping = providerMapping.mapping;
     if (!mapping?.refillSupported) {
       return NextResponse.json({ error: "Refill is not enabled for this service." }, { status: 409 });
     }
