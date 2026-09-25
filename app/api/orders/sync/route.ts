@@ -98,31 +98,45 @@ export async function POST(request: Request) {
       return adapter;
     };
 
+    // Recover missing upstream IDs in one indexed query instead of one
+    // order_events query per order. Preserve the previous "latest 20 events"
+    // recovery window for each order.
+    const ordersNeedingRecovery = active.filter((order) => !order.providerOrderId).map((order) => order.id);
+    const recoveredProviderOrderIdByOrderId = new Map<string, string>();
+    if (ordersNeedingRecovery.length > 0) {
+      const submissionEvents = await db
+        .select({ orderId: orderEvents.orderId, payload: orderEvents.payload })
+        .from(orderEvents)
+        .where(and(
+          inArray(orderEvents.orderId, ordersNeedingRecovery),
+          eq(orderEvents.eventType, "provider_submitted"),
+        ))
+        .orderBy(desc(orderEvents.createdAt));
+
+      const eventsSeenByOrder = new Map<string, number>();
+      for (const event of submissionEvents) {
+        const seen = eventsSeenByOrder.get(event.orderId) ?? 0;
+        if (seen >= 20) continue;
+        eventsSeenByOrder.set(event.orderId, seen + 1);
+        if (recoveredProviderOrderIdByOrderId.has(event.orderId)) continue;
+        if (!event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) continue;
+
+        const recoveredId = (event.payload as { providerOrderId?: unknown }).providerOrderId;
+        if (typeof recoveredId === "string" && recoveredId.trim() && recoveredId.length <= 256) {
+          recoveredProviderOrderIdByOrderId.set(event.orderId, recoveredId.trim());
+        }
+      }
+    }
+
     const orderResults = await mapWithConcurrency(active, SYNC_CONCURRENCY, async (order): Promise<OrderSyncResult> => {
       if (!order.providerId) return { updated: false, skippedProvider: false, providerFailure: false, unknownStatus: false };
 
       let providerOrderId = order.providerOrderId;
       if (!providerOrderId) {
-        const submissionEvent = (await db
-          .select({ payload: orderEvents.payload })
-          .from(orderEvents)
-          .where(and(
-            eq(orderEvents.orderId, order.id),
-            eq(orderEvents.eventType, "provider_submitted"),
-          ))
-          .orderBy(desc(orderEvents.createdAt))
-          .limit(20))
-          .find((event) => {
-            if (!event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) return false;
-            return typeof (event.payload as { providerOrderId?: unknown }).providerOrderId === "string";
-          });
+        const recoveredId = recoveredProviderOrderIdByOrderId.get(order.id);
 
-        const recoveredId = submissionEvent?.payload && typeof submissionEvent.payload === "object" && !Array.isArray(submissionEvent.payload)
-          ? (submissionEvent.payload as { providerOrderId?: unknown }).providerOrderId
-          : undefined;
-
-        if (typeof recoveredId === "string" && recoveredId.trim() && recoveredId.length <= 256) {
-          providerOrderId = recoveredId.trim();
+        if (recoveredId) {
+          providerOrderId = recoveredId;
           const recovered = (await db.update(orders)
             .set({ status: "processing", providerOrderId, updatedAt: new Date() })
             .where(and(
