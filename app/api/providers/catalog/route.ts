@@ -3,8 +3,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { platforms, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const limited = rateLimit(request, "provider-catalog", 5);
+  if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const baseUrl = process.env.PROVIDER_API_BASE_URL ?? "https://app.smmpanel.ng/api/v2";
   const apiKey = process.env.PROVIDER_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "PROVIDER_API_KEY is not configured on the server." }, { status: 503 });
