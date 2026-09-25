@@ -55,7 +55,14 @@ export async function POST(request: Request) {
       else await db.insert(providerServices).values(values);
       imported++;
     }
-    return NextResponse.json({ ok: true, provider: providerName, imported, available: remoteServices.length });
+    return NextResponse.json({
+      ok: true,
+      provider: providerName,
+      imported,
+      available: remoteServices.length,
+    }, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (error) {
     console.error("Provider catalog sync failed:", error);
     return NextResponse.json({ ok: false, error: "Catalog synchronization failed." }, { status: 502 });
