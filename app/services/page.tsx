@@ -36,6 +36,7 @@ export default function ServicesPage() {
   const [rows, setRows] = useState<Service[]>([]);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [platformFilter, setPlatformFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -50,6 +51,11 @@ export default function ServicesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const availablePlatforms = useMemo(
+    () => Array.from(new Set(rows.map((service) => service.platform))).sort(),
+    [rows],
+  );
+
   const availableTypes = useMemo(
     () => Array.from(new Set(rows.map((service) => service.serviceType ?? "other"))).sort(),
     [rows],
@@ -58,15 +64,16 @@ export default function ServicesPage() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return rows.filter((service) => {
+      const matchesPlatform = platformFilter === "all" || service.platform === platformFilter;
       const matchesType = typeFilter === "all" || (service.serviceType ?? "other") === typeFilter;
       const matchesQuery =
         !needle ||
         service.name.toLowerCase().includes(needle) ||
         service.platform.toLowerCase().includes(needle) ||
         (service.serviceType ?? "other").toLowerCase().includes(needle);
-      return matchesType && matchesQuery;
+      return matchesPlatform && matchesType && matchesQuery;
     });
-  }, [query, rows, typeFilter]);
+  }, [platformFilter, query, rows, typeFilter]);
 
   return (
     <main className="min-h-screen bg-[#06100c]">
@@ -84,13 +91,20 @@ export default function ServicesPage() {
           </div>
           <label className="flex items-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4">
             <Filter size={14} className="text-slate-600"/>
+            <select value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value)} aria-label="Filter by platform" className="bg-transparent py-3 text-xs font-semibold text-slate-400 outline-none">
+              <option value="all">All platforms</option>
+              {availablePlatforms.map((platform) => <option key={platform} value={platform}>{platform}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4">
+            <Filter size={14} className="text-slate-600"/>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="Filter by service type" className="bg-transparent py-3 text-xs font-semibold text-slate-400 outline-none">
               <option value="all">All service types</option>
               {availableTypes.map((type) => <option key={type} value={type}>{serviceTypeLabels[type] ?? type}</option>)}
             </select>
           </label>
           <div className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400">
-            {filtered.length}{query || typeFilter !== "all" ? " matching" : ""} services
+            {filtered.length}{query || platformFilter !== "all" || typeFilter !== "all" ? " matching" : ""} services
           </div>
         </div>
 
