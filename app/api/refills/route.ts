@@ -29,7 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order is not linked to a provider." }, { status: 404 });
     }
 
-    if (order.providerOrderId.length > 256) {\n      return NextResponse.json({ error: "Provider order ID is invalid." }, { status: 409 });\n    }\n\n    const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
+    if (order.providerOrderId.length > 256) {
+      return NextResponse.json({ error: "Provider order ID is invalid." }, { status: 409 });
+    }
+
+    const providerRow = (await db.select().from(providers).where(eq(providers.id, order.providerId))).at(0);
     if (!providerRow?.enabled) return NextResponse.json({ error: "Assigned provider is unavailable." }, { status: 409 });
 
     const mapping = (await db.select().from(providerServices).where(and(eq(providerServices.providerId, order.providerId), eq(providerServices.serviceId, order.serviceId), eq(providerServices.active, true)))).at(0);
