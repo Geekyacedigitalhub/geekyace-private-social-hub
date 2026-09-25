@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const rows = await db
-      .select({
+      .selectDistinct({
         id: services.id,
         name: services.name,
         platform: platforms.name,
@@ -28,7 +28,10 @@ export async function GET(request: Request) {
       ))
       .where(eq(services.enabled, true));
 
-    return NextResponse.json({ services: rows }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json(
+      { services: rows },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Services query failed:", error);
     return NextResponse.json({ error: "Unable to load services." }, { status: 500 });
