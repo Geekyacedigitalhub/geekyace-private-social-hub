@@ -1,55 +1,6 @@
 import { desc, eq } from "drizzle-orm";
-import { Layers3, Search, ShoppingCart, Filter } from "lucide-react";
+import { Layers3, Search, ShoppingCart, Filter, ArrowUpRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { platforms, services } from "@/lib/db/schema";
-
-export const dynamic = "force-dynamic";
-
-export default async function ServicesPage() {
-  const rows = await db
-    .select({
-      id: services.id,
-      platform: platforms.name,
-      name: services.name,
-      min: services.minQuantity,
-      max: services.maxQuantity,
-      enabled: services.enabled,
-    })
-    .from(services)
-    .innerJoin(platforms, eq(services.platformId, platforms.id))
-    .orderBy(desc(services.createdAt));
-
-  return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl p-5 sm:p-8">
-        <header>
-          <p className="text-sm font-medium text-emerald-600">Catalog</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">Services</h1>
-          <p className="mt-1 text-sm text-slate-500">Provider services mapped into the private ordering catalog.</p>
-        </header>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]"><div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><Search size={17} className="text-slate-400" /><input aria-label="Search services" placeholder="Search services..." className="w-full bg-transparent text-sm outline-none" /></div><div className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600"><Filter size={16}/> {rows.length} services</div></div>
-
-        <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="grid grid-cols-[1.1fr_1.7fr_0.8fr_0.8fr] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <span>Platform</span><span>Service</span><span>Range</span><span>Action</span>
-          </div>
-          {rows.length ? rows.map((service) => (
-            <div key={service.id} className="grid grid-cols-[1.1fr_1.7fr_0.8fr_0.8fr] gap-4 border-b border-slate-100 px-5 py-4 text-sm last:border-0">
-              <span className="font-medium text-slate-800">{service.platform}</span>
-              <span className="text-slate-700">{service.name}</span>
-              <span className="text-slate-600">{service.min.toLocaleString()} – {service.max.toLocaleString()}</span>
-              <span><a href={"/new-order?serviceId="+encodeURIComponent(service.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><ShoppingCart size={13}/> Order</a></span>
-            </div>
-          )) : (
-            <div className="p-10 text-center">
-              <Layers3 className="mx-auto text-emerald-600" size={26} />
-              <h2 className="mt-3 font-semibold text-slate-900">No services imported yet</h2>
-              <p className="mt-2 text-sm text-slate-500">Sync the provider catalog from the Providers page first.</p>
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
-  );
-}
+export const dynamic="force-dynamic";
+export default async function ServicesPage(){const rows=await db.select({id:services.id,platform:platforms.name,name:services.name,min:services.minQuantity,max:services.maxQuantity,enabled:services.enabled}).from(services).innerJoin(platforms,eq(services.platformId,platforms.id)).orderBy(desc(services.createdAt));return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10"><header><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><Layers3 size={13}/> Catalog</div><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Services</h1><p className="mt-2 text-sm text-slate-500">Provider services mapped into your private ordering catalog.</p></header><div className="mt-8 flex flex-col gap-3 sm:flex-row"><div className="flex flex-1 items-center gap-3 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4"><Search size={16} className="text-slate-600"/><input aria-label="Search services" placeholder="Search services..." className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-slate-600"/></div><div className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400"><Filter size={14}/> {rows.length} services</div></div><section className="gx-card mt-4 overflow-hidden rounded-2xl">{rows.length?<><div className="hidden grid-cols-[1fr_1.8fr_.8fr_.7fr] gap-4 border-b border-white/[0.06] bg-white/[0.02] px-5 py-4 text-[10px] font-bold uppercase tracking-[.16em] text-slate-600 md:grid"><span>Platform</span><span>Service</span><span>Range</span><span>Action</span></div>{rows.map(s=><div key={s.id} className="grid gap-3 border-b border-white/[0.045] px-5 py-5 transition hover:bg-white/[0.025] md:grid-cols-[1fr_1.8fr_.8fr_.7fr] md:items-center"><span className="text-xs font-bold uppercase tracking-wide text-emerald-400">{s.platform}</span><span><span className="block text-sm font-medium text-white">{s.name}</span><span className="mt-1 block text-[11px] text-slate-600">{s.enabled?"Available":"Disabled"}</span></span><span className="text-sm text-slate-400">{s.min.toLocaleString()} – {s.max.toLocaleString()}</span><a href={"/new-order?serviceId="+encodeURIComponent(s.id)} className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-400/15"><ShoppingCart size={13}/> Order <ArrowUpRight size={12}/></a></div>)}</>:<div className="p-12 text-center"><Layers3 className="mx-auto text-emerald-400" size={28}/><h2 className="mt-4 font-semibold text-white">No services imported yet</h2><p className="mt-2 text-sm text-slate-600">Sync the provider catalog from Providers first.</p></div>}</section></div></main>}
