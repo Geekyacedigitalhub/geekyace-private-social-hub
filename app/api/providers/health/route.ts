@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const limited = rateLimit(request, "provider-health", 10);
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   const providerName = process.env.PROVIDER_NAME ?? "Configured provider";
-  const baseUrl = process.env.PROVIDER_API_BASE_URL ?? "";
+  const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
   const apiKey = process.env.PROVIDER_API_KEY ?? "";
 
   if (!baseUrl || !apiKey) {
@@ -49,9 +49,9 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, status: "healthy", latencyMs, balance: balance.balance, currency: balance.currency, serviceCount: services.length });
+    return NextResponse.json({ ok: true, status: "healthy", latencyMs, balance: balance.balance, currency: balance.currency, serviceCount: services.length }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Provider health check failed:", error);
-    return NextResponse.json({ ok: false, status: "down", error: "Provider health check failed." }, { status: 502 });
+    return NextResponse.json({ ok: false, status: "down", error: "Provider health check failed." }, { status: 502, headers: { "Cache-Control": "no-store, max-age=0" } });
   }
 }
