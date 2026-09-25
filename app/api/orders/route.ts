@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { serviceId?: string; target?: string; quantity?: number };
     const serviceId = String(body.serviceId ?? "").trim();
     const target = String(body.target ?? "").trim();
+    if (target.length > 2048) return NextResponse.json({ error: "Target is too long." }, { status: 400 });
     const quantity = Number(body.quantity);
     if (!serviceId || !target || !Number.isInteger(quantity) || quantity <= 0) {
       return NextResponse.json({ error: "Service, target, and a valid quantity are required." }, { status: 400 });
