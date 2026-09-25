@@ -41,6 +41,7 @@ export default function ServicesPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [showDetails, setShowDetails] = useState(false);
+  const [capabilityFilter, setCapabilityFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -70,14 +71,15 @@ export default function ServicesPage() {
     return rows.filter((service) => {
       const matchesPlatform = platformFilter === "all" || service.platform === platformFilter;
       const matchesType = typeFilter === "all" || (service.serviceType ?? "other") === typeFilter;
+      const matchesCapability = capabilityFilter === "all" || (capabilityFilter === "refill" ? service.refillSupported : capabilityFilter === "cancel" ? service.cancelSupported : true);
       const matchesQuery =
         !needle ||
         service.name.toLowerCase().includes(needle) ||
         service.platform.toLowerCase().includes(needle) ||
         (service.serviceType ?? "other").toLowerCase().includes(needle);
-      return matchesPlatform && matchesType && matchesQuery;
+      return matchesPlatform && matchesType && matchesCapability && matchesQuery;
     });
-  }, [platformFilter, query, rows, typeFilter]);
+  }, [capabilityFilter, platformFilter, query, rows, typeFilter]);
 
   return (
     <main className="min-h-screen bg-[#06100c]">
@@ -108,8 +110,9 @@ export default function ServicesPage() {
             </select>
           </label>
           <label className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400"><input type="checkbox" checked={showDetails} onChange={(e) => setShowDetails(e.target.checked)} /> Details</label>
+          <label className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400"><select value={capabilityFilter} onChange={(e) => setCapabilityFilter(e.target.value)} aria-label="Filter by provider capability" className="bg-transparent outline-none"><option value="all">All capabilities</option><option value="refill">Refill supported</option><option value="cancel">Cancel supported</option></select></label>
           <div className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#0d1b15] px-4 py-3 text-xs font-semibold text-slate-400">
-            {filtered.length}{query || platformFilter !== "all" || typeFilter !== "all" ? " matching" : ""} services
+            {filtered.length}{query || platformFilter !== "all" || typeFilter !== "all" || capabilityFilter !== "all" ? " matching" : ""} services
           </div>
         </div>
 
