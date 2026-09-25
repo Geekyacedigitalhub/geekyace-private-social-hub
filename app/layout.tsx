@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import "./globals.css";
 import { LayoutDashboard, ShoppingCart, Package, Boxes, ServerCog, RefreshCw, BarChart3, ScrollText, Settings, ShieldCheck, Zap } from "lucide-react";
@@ -8,13 +9,17 @@ export const metadata: Metadata = {
   description: "Private provider-backed social service control center.",
 };
 
-const groups = [
+type NavItem = readonly [string, string, LucideIcon];
+type NavGroup = { label: string; items: readonly NavItem[] };
+
+const groups: readonly NavGroup[] = [
   { label: "Workspace", items: [["Dashboard", "/", LayoutDashboard], ["New Order", "/new-order", ShoppingCart], ["Orders", "/orders", Package]] },
   { label: "Operations", items: [["Services", "/services", Boxes], ["Providers", "/providers", ServerCog], ["Refills", "/refills", RefreshCw], ["Analytics", "/analytics", BarChart3]] },
   { label: "System", items: [["Logs", "/logs", ScrollText], ["Settings", "/settings", Settings]] },
-] as const;
+];
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const mobileItems: readonly NavItem[] = groups.flatMap((group) => group.items);
   return (
     <html lang="en">
       <body>
@@ -25,12 +30,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-300 via-emerald-500 to-teal-700 text-lg font-black text-[#06100c] shadow-[0_0_32px_rgba(52,211,153,.2)] transition group-hover:scale-105">G</span>
                 <span><span className="block text-[11px] font-bold uppercase tracking-[.24em] text-emerald-400">GeekyAce</span><span className="mt-0.5 block text-lg font-semibold tracking-tight text-white">Social Hub</span></span>
               </Link>
-
               <div className="mb-5 flex items-center gap-2 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.06] px-3 py-2.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.9)]" />
                 <span className="text-[11px] font-semibold uppercase tracking-[.18em] text-emerald-300">Private workspace</span>
               </div>
-
               <nav className="space-y-6">
                 {groups.map((group) => (
                   <div key={group.label}>
@@ -46,14 +49,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   </div>
                 ))}
               </nav>
-
               <div className="mt-auto overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.055] to-emerald-400/[0.035] p-4">
                 <div className="flex items-center gap-2 text-xs font-semibold text-white"><ShieldCheck size={15} className="text-emerald-400" /> Owner-only access</div>
                 <p className="mt-2 text-[11px] leading-5 text-slate-500">Provider credentials stay server-side. This workspace is not a public storefront.</p>
               </div>
             </div>
           </aside>
-
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#06100c]/90 px-4 py-3 backdrop-blur-xl lg:hidden">
               <div className="flex items-center justify-between gap-3">
@@ -61,7 +62,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/new-order" className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-400 px-3 py-2 text-xs font-bold text-[#06100c] shadow-lg shadow-emerald-500/10"><Zap size={13} /> New order</Link>
               </div>
               <nav className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-                {groups.flatMap((group) => group.items).map(([label, href]) => <Link key={href} href={href} className="whitespace-nowrap rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-400">{label}</Link>)}
+                {mobileItems.map(([label, href]) => <Link key={href} href={href} className="whitespace-nowrap rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-400">{label}</Link>)}
               </nav>
             </header>
             <div className="relative min-h-screen overflow-hidden">
