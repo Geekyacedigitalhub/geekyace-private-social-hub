@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     let updated = 0;
     let skippedProvider = 0;
     let providerFailures = 0;
+    let unknownStatuses = 0;
     for (const order of active) {
       if (!order.providerId) continue;
 
@@ -65,7 +66,10 @@ export async function POST(request: Request) {
         await db.insert(orderEvents).values({ orderId: order.id, eventType: "automatic_status_check_failed", message: "Automatic provider status synchronization failed.", payload: { error: "Provider request failed." } });
         continue;
       }
-      if (status.status === "unknown") continue;
+      if (status.status === "unknown") {
+        unknownStatuses++;
+        continue;
+      }
 
       const nextStatus =
         ["completed", "failed", "cancelled"].includes(order.status)
@@ -148,7 +152,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, checked: active.length, updated, skippedProvider, providerFailures, refillsChecked: activeRefills.length, refillsUpdated });
+    return NextResponse.json({ ok: true, checked: active.length, updated, skippedProvider, providerFailures, unknownStatuses, refillsChecked: activeRefills.length, refillsUpdated });
   } catch (error) {
     console.error("Order synchronization failed:", error);
     return NextResponse.json({ ok: false, error: "Order synchronization failed." }, { status: 500 });
