@@ -4,8 +4,13 @@ import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/sc
 import { createProviderAdapter } from "@/lib/providers";
 
 export async function GET() {
-  const rows = await db.select().from(providerHealth);
-  return NextResponse.json({ health: rows });
+  try {
+    const rows = await db.select().from(providerHealth);
+    return NextResponse.json({ health: rows });
+  } catch (error) {
+    console.error("Provider health query failed:", error);
+    return NextResponse.json({ error: "Unable to load provider health." }, { status: 500 });
+  }
 }
 
 export async function POST() {
@@ -40,7 +45,7 @@ export async function POST() {
 
     return NextResponse.json({ ok: true, status: "healthy", latencyMs, balance: balance.balance, currency: balance.currency, serviceCount: services.length });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Provider health check failed.";
-    return NextResponse.json({ ok: false, status: "down", error: message }, { status: 502 });
+    console.error("Provider health check failed:", error);
+    return NextResponse.json({ ok: false, status: "down", error: "Provider health check failed." }, { status: 502 });
   }
 }
