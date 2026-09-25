@@ -33,7 +33,11 @@ export async function POST(request: Request) {
     const inserted = await db.insert(orders).values({ serviceId: service.id, target, quantity, status: "pending", providerId: mapping.provider.id }).returning();
     const order = inserted[0];
     if (!order) throw new Error("Order record could not be created.");
-    await db.insert(orderEvents).values({ orderId: order.id, eventType: "created", message: "Local order created; awaiting upstream provider submission." });
+    try {
+      await db.insert(orderEvents).values({ orderId: order.id, eventType: "created", message: "Local order created; awaiting upstream provider submission." });
+    } catch (eventError) {
+      console.error("Order creation event logging failed:", eventError);
+    }
     try {
       const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
       const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
