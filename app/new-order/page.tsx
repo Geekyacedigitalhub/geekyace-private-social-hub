@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck, CheckCircle2, Info } from "lucide-react";
 
 type Service = { id: string; name: string; platform: string; min: number; max: number };
 
@@ -58,7 +58,7 @@ export default function NewOrderPage() {
           <p className="mt-1 text-sm text-slate-500">Submit an order through a configured provider service.</p>
         </header>
 
-        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+        <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]"><div className="rounded-xl border border-slate-200 bg-white p-6">
           <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
             <div className="flex gap-3">
               <ShieldCheck className="mt-0.5 shrink-0 text-emerald-700" size={18} />
@@ -98,7 +98,15 @@ export default function NewOrderPage() {
             </button>
             {message ? <p className="text-sm text-slate-600">{message}</p> : null}
           </form>
-        </section>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center gap-2"><Info size={17} className="text-emerald-600"/><h2 className="font-semibold text-slate-900">Order summary</h2></div>
+            <div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-3"><span className="text-slate-500">Platform</span><span className="font-medium text-slate-800">{selected?.platform ?? "—"}</span></div><div className="flex justify-between gap-3"><span className="text-slate-500">Service</span><span className="max-w-[180px] text-right font-medium text-slate-800">{selected?.name ?? "—"}</span></div><div className="flex justify-between gap-3"><span className="text-slate-500">Quantity</span><span className="font-medium text-slate-800">{quantity ? Number(quantity).toLocaleString() : "—"}</span></div></div>
+          </div>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-5"><h2 className="font-semibold text-emerald-900">Before placing</h2><ul className="mt-3 space-y-2 text-xs leading-5 text-emerald-800"><li className="flex gap-2"><CheckCircle2 size={15} className="mt-0.5 shrink-0"/>Check the target carefully.</li><li className="flex gap-2"><CheckCircle2 size={15} className="mt-0.5 shrink-0"/>Use a quantity within the displayed limits.</li><li className="flex gap-2"><CheckCircle2 size={15} className="mt-0.5 shrink-0"/>Do not resubmit if an order is already accepted.</li></ul></div>
+        </aside>
       </div>
     </main>
   );
