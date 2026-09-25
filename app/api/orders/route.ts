@@ -67,7 +67,7 @@ export async function GET(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited.retryAfter);
   try {
     const rows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(200);
-    return NextResponse.json({ orders: rows });
+    return NextResponse.json({ orders: rows }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Order list failed:", error);
     return NextResponse.json({ error: "Unable to load orders." }, { status: 500 });
