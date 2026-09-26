@@ -9,7 +9,7 @@ type OrderRequirements = {
   omitQuantity?: boolean;
 };
 
-type RoutingCandidate = { providerId:string; provider:string; pricePerThousand:number|null; min:number; max:number; refillSupported:boolean; health:string; latencyMs:number|null; };
+type RoutingCandidate = { providerId:string; provider:string; pricePerThousand:number|null; min:number; max:number; refillSupported:boolean; health:string; latencyMs:number|null; matchScore:number; };
 type Service = {
   id: string;
   name: string;
@@ -258,9 +258,52 @@ export default function NewOrderPage() {
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Service type</span><span className="font-semibold text-slate-300">{selected ? typeLabel(selected.serviceType) : "—"}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Service</span><span className="max-w-[190px] text-right font-semibold text-slate-300">{selected?.name ?? "—"}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Quantity</span><span className="font-semibold text-slate-300">{quantity ? Number(quantity).toLocaleString() : "—"}</span></div>
-                <div className="border-t border-white/[0.06] pt-4"><div className="flex items-center gap-2"><Activity size={14} className="text-emerald-300"/><span className="text-slate-600">Provider routing</span></div><p className="mt-2 text-sm font-semibold text-emerald-300">{routing.selectedProviderId ? (routing.candidates.find(x=>x.providerId===routing.selectedProviderId)?.provider ?? "Smart Auto") : "No provider mapped yet"}</p><p className="mt-1 text-[11px] text-slate-600">{routing.candidates.length ? "Smart Auto compares health, price and latency." : "Sync provider catalogs to enable routing."}</p></div>
+                <div className="border-t border-white/[0.06] pt-4">
+  <div className="flex items-center justify-between gap-3">
+    <div className="flex items-center gap-2"><Activity size={14} className="text-emerald-300"/><span className="text-slate-600">Provider routing</span></div>
+    {routing.candidates.length ? <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{routing.candidates.length} available</span> : null}
+  </div>
+  <p className="mt-2 text-sm font-semibold text-emerald-300">{routing.selectedProviderId ? (routing.candidates.find(x=>x.providerId===routing.selectedProviderId)?.provider ?? "Smart Auto") : "No provider mapped yet"}</p>
+  <p className="mt-1 text-[11px] text-slate-600">{routing.candidates.length ? "Smart Auto compares service match, health, price and latency." : "No compatible provider is currently mapped."}</p>
+</div>
               </div>
             </div>
+            {routing.candidates.length ? (
+              <div className="gx-card rounded-3xl p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold text-white">Available providers</h2>
+                    <p className="mt-1 text-[11px] text-slate-600">Smart Auto uses these compatible options for this service.</p>
+                  </div>
+                  <Activity size={16} className="text-emerald-300" />
+                </div>
+                <div className="mt-4 space-y-2">
+                  {routing.candidates.map((candidate) => {
+                    const selectedProvider = candidate.providerId === routing.selectedProviderId;
+                    const healthLabel = candidate.health === "healthy" ? "Healthy" : candidate.health === "degraded" ? "Degraded" : candidate.health === "down" ? "Down" : "Unknown";
+                    return (
+                      <div key={candidate.providerId} className={"rounded-2xl border p-3 " + (selectedProvider ? "border-emerald-400/25 bg-emerald-400/[0.06]" : "border-white/[0.06] bg-white/[0.02]")}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-white">{candidate.provider}</p>
+                            <p className="mt-1 text-[10px] text-slate-600">{healthLabel}{candidate.latencyMs != null ? " · " + candidate.latencyMs + "ms" : ""} · Match {candidate.matchScore}%</p>
+                          </div>
+                          {selectedProvider ? <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Smart Auto</span> : null}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[10px]">
+                          <span className="text-slate-600">Price / 1K</span>
+                          <span className="font-semibold text-slate-300">{candidate.pricePerThousand == null ? "—" : Number(candidate.pricePerThousand).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-[10px]">
+                          <span className="text-slate-600">Range</span>
+                          <span className="text-slate-500">{candidate.min.toLocaleString()} – {candidate.max.toLocaleString()}{candidate.refillSupported ? " · Refill" : ""}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="rounded-3xl border border-white/[0.07] bg-white/[0.025] p-6">
               <h2 className="font-semibold text-white">Before placing</h2>
               <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-500">
