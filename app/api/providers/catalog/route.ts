@@ -376,6 +376,4 @@ function matchesPlatform(value: string, needle: string) {
     return tokens.includes(needle.toLowerCase());
   }
   return value.includes(needle);
-}");
-  return new RegExp(`(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(value);
 }
