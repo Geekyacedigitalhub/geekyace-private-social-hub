@@ -49,6 +49,7 @@ const serviceTypeLabels: Record<string, string> = {
   signup_like: "Signup + Like",
   page_likes: "Page Likes",
   group_members: "Group Members",
+  channel_members: "Channel Members",
   post_shares: "Post Shares",
   story_shares: "Story Shares",
   custom_meme_comments: "Custom Meme Comments",
