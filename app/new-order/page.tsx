@@ -97,6 +97,7 @@ export default function NewOrderPage() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [routing, setRouting] = useState<{selectedProviderId:string|null;candidates:RoutingCandidate[]}>({selectedProviderId:null,candidates:[]});
+  const [providerMode, setProviderMode] = useState<"auto" | "manual">("auto");
 
   useEffect(() => {
     fetch("/api/services")
@@ -115,6 +116,7 @@ export default function NewOrderPage() {
   useEffect(() => {
     if (!serviceId) {
       setRouting({ selectedProviderId: null, candidates: [] });
+      setProviderMode("auto");
       return;
     }
     fetch("/api/providers/routing?serviceId=" + encodeURIComponent(serviceId), { cache: "no-store" })
@@ -123,7 +125,8 @@ export default function NewOrderPage() {
         setRouting({
           selectedProviderId: d.selectedProviderId ?? null,
           candidates: d.candidates ?? [],
-        }),
+        });
+        setProviderMode("auto"),
       )
       .catch(() => setRouting({ selectedProviderId: null, candidates: [] }));
   }, [serviceId]);
@@ -156,6 +159,7 @@ export default function NewOrderPage() {
     setSubmitting(true);
     setMessage("");
     const idempotencyKey = crypto.randomUUID();
+    const selectedProviderId = providerMode === "manual" ? routing.selectedProviderId : undefined;
 
     try {
       const r = await fetch("/api/orders", {
@@ -166,6 +170,7 @@ export default function NewOrderPage() {
           target,
           quantity: Number(quantity),
           fields,
+          ...(selectedProviderId ? { providerId: selectedProviderId } : {}),
         }),
       });
       const d = await r.json() as { ok?: boolean; pending?: boolean; error?: string; order?: { id: string } };
@@ -264,7 +269,7 @@ export default function NewOrderPage() {
     {routing.candidates.length ? <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{routing.candidates.length} available</span> : null}
   </div>
   <p className="mt-2 text-sm font-semibold text-emerald-300">{routing.selectedProviderId ? (routing.candidates.find(x=>x.providerId===routing.selectedProviderId)?.provider ?? "Smart Auto") : "No provider mapped yet"}</p>
-  <p className="mt-1 text-[11px] text-slate-600">{routing.candidates.length ? "Smart Auto compares service match, health, price and latency." : "No compatible provider is currently mapped."}</p>
+  <p className="mt-1 text-[11px] text-slate-600">{routing.candidates.length ? (providerMode === "manual" ? "Manual selection is active. The order will use the selected compatible provider." : "Smart Auto compares service match, health, price and latency.") : "No compatible provider is currently mapped."}</p>
 </div>
               </div>
             </div>
@@ -277,18 +282,22 @@ export default function NewOrderPage() {
                   </div>
                   <Activity size={16} className="text-emerald-300" />
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                  <button type="button" onClick={() => { setProviderMode("auto"); setRouting((current) => ({ ...current, selectedProviderId: current.candidates[0]?.providerId ?? null })); }} className={"flex-1 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider " + (providerMode === "auto" ? "bg-emerald-400 text-[#06100c]" : "text-slate-500 hover:text-white")}>Smart Auto</button>
+                  <span className="text-[10px] text-slate-700">or choose manually</span>
+                </div>
+                <div className="mt-2 space-y-2">
                   {routing.candidates.map((candidate) => {
                     const selectedProvider = candidate.providerId === routing.selectedProviderId;
                     const healthLabel = candidate.health === "healthy" ? "Healthy" : candidate.health === "degraded" ? "Degraded" : candidate.health === "down" ? "Down" : "Unknown";
                     return (
-                      <div key={candidate.providerId} className={"rounded-2xl border p-3 " + (selectedProvider ? "border-emerald-400/25 bg-emerald-400/[0.06]" : "border-white/[0.06] bg-white/[0.02]")}>
+                      <button type="button" key={candidate.providerId} onClick={() => { setProviderMode("manual"); setRouting((current) => ({ ...current, selectedProviderId: candidate.providerId })); }} className={"w-full rounded-2xl border p-3 text-left transition " + (selectedProvider && providerMode === "manual" ? "border-emerald-400/30 bg-emerald-400/[0.07]" : "border-white/[0.06] bg-white/[0.02] hover:border-emerald-400/15")}>
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-xs font-semibold text-white">{candidate.provider}</p>
                             <p className="mt-1 text-[10px] text-slate-600">{healthLabel}{candidate.latencyMs != null ? " · " + candidate.latencyMs + "ms" : ""} · Match {candidate.matchScore}%</p>
                           </div>
-                          {selectedProvider ? <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Smart Auto</span> : null}
+                          {selectedProvider && providerMode === "manual" ? <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Selected</span> : null}
                         </div>
                         <div className="mt-2 flex items-center justify-between text-[10px]">
                           <span className="text-slate-600">Price / 1K</span>
@@ -298,7 +307,7 @@ export default function NewOrderPage() {
                           <span className="text-slate-600">Range</span>
                           <span className="text-slate-500">{candidate.min.toLocaleString()} – {candidate.max.toLocaleString()}{candidate.refillSupported ? " · Refill" : ""}</span>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
