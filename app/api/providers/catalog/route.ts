@@ -210,6 +210,8 @@ function inferServiceType(category?: string, serviceName?: string, providerType?
     ["sign up + like", "signup_like"],
     ["page likes", "page_likes"],
     ["page like", "page_likes"],
+    ["channel members", "channel_members"],
+    ["channel member", "channel_members"],
     ["group members", "group_members"],
     ["group member", "group_members"],
     ["post shares", "post_shares"],
