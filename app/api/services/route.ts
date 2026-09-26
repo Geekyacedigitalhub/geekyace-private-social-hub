@@ -58,6 +58,16 @@ export async function GET(request: Request) {
           order by provider_services.created_at desc
           limit 1
         ), false)`,
+        orderRequirements: sql<unknown>`coalesce((
+          select provider_services.metadata->'orderRequirements'
+          from provider_services
+          inner join providers on provider_services.provider_id = providers.id
+          where provider_services.service_id = services.id
+            and provider_services.active = true
+            and providers.enabled = true
+          order by provider_services.created_at desc
+          limit 1
+        ), jsonb_build_object('requiredFields', jsonb_build_array(), 'omitQuantity', false))`,
       })
       .from(services)
       .innerJoin(platforms, eq(services.platformId, platforms.id))
