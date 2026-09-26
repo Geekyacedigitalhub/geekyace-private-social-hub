@@ -6,7 +6,8 @@ import { getStarterTrendCandidates } from "@/lib/content/engine";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  await requireOwner();
+  const denied = await requireOwner();
+  if (denied) return denied;
   const body = await request.json().catch(() => ({}));
   const index = typeof body.index === "number" ? body.index : 0;
   const candidate = getStarterTrendCandidates()[index];
