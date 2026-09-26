@@ -10,6 +10,13 @@ import type {
 
 type GenericProviderConfig = { baseUrl: string; apiKey: string; timeoutMs?: number };
 
+export class ProviderRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProviderRejectedError";
+  }
+}
+
 export class GenericPanelProvider implements ProviderAdapter {
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -46,8 +53,13 @@ export class GenericPanelProvider implements ProviderAdapter {
       if (body.length > 2_000_000) throw new Error("Provider response exceeded the maximum allowed size.");
       try {
         const parsed: unknown = JSON.parse(body);
+        if (parsed && typeof parsed === "object" && typeof (parsed as { error?: unknown }).error === "string") {
+          const message = (parsed as { error: string }).error.trim().slice(0, 500);
+          if (message) throw new ProviderRejectedError(message);
+        }
         return parsed as T;
-      } catch {
+      } catch (error) {
+        if (error instanceof ProviderRejectedError) throw error;
         throw new Error("Provider returned an invalid JSON response.");
       }
     } finally {
