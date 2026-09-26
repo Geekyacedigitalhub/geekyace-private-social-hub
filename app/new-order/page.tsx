@@ -58,6 +58,7 @@ const typeLabel = (value?: string) => ({
   poll_votes: "Poll Votes",
   channel_follows: "Channel Follows",
   repins: "Repins",
+  impressions: "Impressions",
   other: "Other",
 }[value ?? "other"] ?? value ?? "Other");
 
