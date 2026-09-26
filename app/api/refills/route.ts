@@ -117,8 +117,7 @@ export async function POST(request: Request) {
     const provider = createProviderAdapter({
       name: providerRow.name,
       baseUrl: providerRow.baseUrl,
-      apiKey: process.env.PROVIDER_API_KEY ?? "",
-    });
+          });
     if (!provider.requestRefill) {
       await markRefillFailed(claim.id);
       return NextResponse.json(
