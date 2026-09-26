@@ -275,6 +275,8 @@ function inferServiceType(category?: string, serviceName?: string, providerType?
 function inferOrderRequirements(category?: string, serviceName?: string, providerType?: string) {
   const value = `${category ?? ""} ${serviceName ?? ""} ${providerType ?? ""}`.toLowerCase();
   if (value.includes("custom comments package")) return { requiredFields: ["comments"], omitQuantity: true };
+  if (value.includes("custom meme comments")) return { requiredFields: ["comments"], omitQuantity: false };
+  if (value.includes("meme comments")) return { requiredFields: ["comments"], omitQuantity: false };
   if (value.includes("custom comments")) return { requiredFields: ["comments"], omitQuantity: false };
   if (value.includes("comment replies")) return { requiredFields: ["comments", "username"], omitQuantity: false };
   if (value.includes("mentions with hashtags")) return { requiredFields: ["usernames", "hashtags"], omitQuantity: false };
