@@ -5,7 +5,8 @@ import { startVeoGeneration } from "@/lib/content/video/veo";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  await requireOwner();
+  const denied = await requireOwner();
+  if (denied) return denied;
   const body = await request.json().catch(() => ({}));
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return NextResponse.json({ ok: false, error: "A video prompt is required" }, { status: 400 });
