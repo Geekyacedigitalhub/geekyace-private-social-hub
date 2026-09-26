@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orderEvents, orders, providerHealth, providerServices, providers, services } from "@/lib/db/schema";
+import { orderEvents, orders, platforms, providerHealth, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 import { ProviderRejectedError } from "@/lib/providers/generic";
 import { requireOwner } from "@/lib/auth/require-owner";
@@ -25,6 +25,60 @@ function replayResponse(order: typeof orders.$inferSelect) {
     );
   }
   return NextResponse.json({ ok: true, replayed: true, order });
+}
+
+
+function routingFingerprint(platform: string, serviceType: string, name: string) {
+  const normalizedPlatform = platform.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizedType = serviceType.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  const raw = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const descriptorTerms = [
+    "real", "mix", "bot", "hq", "premium", "female", "male", "organic",
+    "aged", "old", "new", "highretention", "lowdrop", "fast", "slow",
+    "global", "worldwide", "usa", "uk", "canada", "australia", "germany",
+    "france", "italy", "spain", "brazil", "india", "nigeria", "bangladesh",
+    "pakistan", "indonesia", "turkey", "japan", "korea", "mexico",
+  ];
+
+  const descriptors = descriptorTerms.filter((term) => raw.replace(/[^a-z0-9]+/g, " ").includes(term));
+  const core = raw
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => ![
+      "instagram","facebook","tiktok","youtube","twitter","x","linkedin","threads",
+      "telegram","discord","reddit","twitch","pinterest","spotify","snapchat",
+      "followers","follower","likes","like","views","view","comments","comment",
+      "shares","share","saves","save","subscribers","subscriber","members","member",
+      "reactions","reaction","reposts","repost","traffic","impressions","impression",
+      "service","profile","page","post","video","photo","story",
+    ].includes(token))
+    .filter((token) => !/^\d+$/.test(token))
+    .slice(0, 8);
+
+  return [normalizedPlatform, normalizedType, [...new Set([...core, ...descriptors])].sort().join(",")].join("|");
+}
+
+function routingScore(selected: { platform: string; serviceType: string; name: string }, candidate: { platform: string; serviceType: string; name: string }) {
+  if (selected.platform.toLowerCase() !== candidate.platform.toLowerCase()) return 0;
+  if (selected.serviceType !== candidate.serviceType) return 0;
+  const a = new Set(routingFingerprint(selected.platform, selected.serviceType, selected.name).split("|")[2].split(",").filter(Boolean));
+  const b = new Set(routingFingerprint(candidate.platform, candidate.serviceType, candidate.name).split("|")[2].split(",").filter(Boolean));
+  if (!a.size && !b.size) return 100;
+  const intersection = [...a].filter((x) => b.has(x)).length;
+  const union = new Set([...a, ...b]).size;
+  return union ? Math.round((intersection / union) * 100) : 100;
+}
+
+function inferServiceType(name: string) {
+  const value = name.toLowerCase();
+  const pairs: [string,string][] = [["follower","followers"],["like","likes"],["comment","comments"],["view","views"],["share","shares"],["save","saves"],["subscriber","subscribers"],["member","members"],["reaction","reactions"],["repost","reposts"],["traffic","traffic"],["impression","impressions"],["review","reviews"],["rating","ratings"],["mention","mentions"],["vote","votes"]];
+  return pairs.find(([needle]) => value.includes(needle))?.[1] ?? "other";
 }
 
 export async function POST(request: Request) {
@@ -64,20 +118,48 @@ export async function POST(request: Request) {
     if (quantity < service.minQuantity || quantity > service.maxQuantity) {
       return NextResponse.json({ error: "Quantity must be between " + service.minQuantity + " and " + service.maxQuantity + "." }, { status: 400 });
     }
-    const candidates = await db
-      .select({ mapping: providerServices, provider: providers })
+    const selectedPlatform = (await db.select({ name: platforms.name }).from(platforms).where(eq(platforms.id, service.platformId))).at(0)?.name ?? "Other";
+    const selectedMapping = (await db.select({ mapping: providerServices })
+      .from(providerServices)
+      .where(and(eq(providerServices.serviceId, service.id), eq(providerServices.active, true)))).at(0);
+    const selectedType = String(selectedMapping?.mapping.metadata && typeof selectedMapping.mapping.metadata === "object"
+      ? (selectedMapping.mapping.metadata as { serviceType?: unknown }).serviceType ?? ""
+      : "").trim() || inferServiceType(service.name);
+
+    const allCandidates = await db.select({ mapping: providerServices, provider: providers, candidateService: services, platform: platforms })
       .from(providerServices)
       .innerJoin(providers, eq(providerServices.providerId, providers.id))
-      .where(and(
-        eq(providerServices.serviceId, service.id),
-        eq(providerServices.active, true),
-        eq(providers.enabled, true),
-      ));
-    const eligible = candidates.filter(({ mapping }) => {
-      const min = mapping.minQuantity ?? service.minQuantity;
-      const max = mapping.maxQuantity ?? service.maxQuantity;
-      return quantity >= min && quantity <= max;
-    });
+      .innerJoin(services, eq(providerServices.serviceId, services.id))
+      .innerJoin(platforms, eq(services.platformId, platforms.id))
+      .where(and(eq(providerServices.active, true), eq(providers.enabled, true), eq(services.enabled, true)));
+
+    const scored = allCandidates
+      .map(({ mapping, provider, candidateService, platform }) => {
+        const candidateType = String(mapping.metadata && typeof mapping.metadata === "object"
+          ? (mapping.metadata as { serviceType?: unknown }).serviceType ?? ""
+          : "").trim() || inferServiceType(candidateService.name);
+        return {
+          mapping,
+          provider,
+          score: routingScore(
+            { platform: selectedPlatform, serviceType: selectedType, name: service.name },
+            { platform: platform.name, serviceType: candidateType, name: candidateService.name },
+          ),
+        };
+      })
+      .filter(({ score }) => score >= 70 && quantity >= (0) && quantity <= (Number.MAX_SAFE_INTEGER));
+
+    const bestByProvider = new Map<string, typeof scored[number]>();
+    for (const row of scored) {
+      const min = row.mapping.minQuantity ?? service.minQuantity;
+      const max = row.mapping.maxQuantity ?? service.maxQuantity;
+      if (quantity < min || quantity > max) continue;
+      const existing = bestByProvider.get(row.provider.id);
+      if (!existing || row.score > existing.score || (row.score === existing.score && Number(row.mapping.pricePerThousand ?? Infinity) < Number(existing.mapping.pricePerThousand ?? Infinity))) {
+        bestByProvider.set(row.provider.id, row);
+      }
+    }
+    const eligible = [...bestByProvider.values()];
     if (!eligible.length) return NextResponse.json({ error: "No enabled provider can fulfill this quantity for this service." }, { status: 409 });
 
     const healthRows = await db.select({ providerId: providerHealth.providerId, status: providerHealth.status, responseTimeMs: providerHealth.responseTimeMs, checkedAt: providerHealth.checkedAt })
