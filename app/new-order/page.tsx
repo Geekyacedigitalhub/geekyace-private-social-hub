@@ -9,7 +9,8 @@ type OrderRequirements = {
   omitQuantity?: boolean;
 };
 
-type RoutingCandidate = { providerId:string; provider:string; pricePerThousand:number|null; min:number; max:number; refillSupported:boolean; health:string; latencyMs:number|null; };\ntype Service = {
+type RoutingCandidate = { providerId:string; provider:string; pricePerThousand:number|null; min:number; max:number; refillSupported:boolean; health:string; latencyMs:number|null; };
+type Service = {
   id: string;
   name: string;
   platform: string;
