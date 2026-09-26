@@ -41,6 +41,7 @@ export async function GET(request: Request) {
             when lower(services.name) like '%poll vote%' then 'poll_votes'
             when lower(services.name) like '%channel follow%' then 'channel_follows'
             when lower(services.name) like '%repin%' then 'repins'
+            when lower(services.name) like '%impression%' then 'impressions'
             when lower(services.name) like '%follower%' or lower(services.name) like '%follow%' then 'followers'
             when lower(services.name) like '%subscriber%' then 'subscribers'
             when lower(services.name) like '%member%' then 'members'
