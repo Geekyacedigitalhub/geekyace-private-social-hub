@@ -13,6 +13,7 @@ const PROVIDER_KEY_ENV: Record<string, string> = {
   "ClassySMM": "PROVIDER_API_KEY_CLASSYSMM",
   "PawaBoost": "PROVIDER_API_KEY_PAWABOOST",
   "Caryvn": "PROVIDER_API_KEY_CARYVN",
+  "Really Simple Social": "PROVIDER_API_KEY_REALLY_SIMPLE_SOCIAL",
 };
 
 export function getProviderApiKey(name: string): string {
