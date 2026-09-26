@@ -18,16 +18,32 @@ export async function GET(request: Request) {
         platform: platforms.name,
         min: services.minQuantity,
         max: services.maxQuantity,
-        serviceType: sql<string>`coalesce((
-          select provider_services.metadata->>'serviceType'
-          from provider_services
-          inner join providers on provider_services.provider_id = providers.id
-          where provider_services.service_id = services.id
-            and provider_services.active = true
-            and providers.enabled = true
-          order by provider_services.created_at desc
-          limit 1
-        ), 'other')`,
+        serviceType: sql<string>`coalesce(
+          nullif((
+            select provider_services.metadata->>'serviceType'
+            from provider_services
+            inner join providers on provider_services.provider_id = providers.id
+            where provider_services.service_id = services.id
+              and provider_services.active = true
+              and providers.enabled = true
+            order by provider_services.created_at desc
+            limit 1
+          ), 'other'),
+          case
+            when lower(services.name) like '%follower%' or lower(services.name) like '%follow%' then 'followers'
+            when lower(services.name) like '%subscriber%' then 'subscribers'
+            when lower(services.name) like '%member%' then 'members'
+            when lower(services.name) like '%comment%' then 'comments'
+            when lower(services.name) like '%like%' then 'likes'
+            when lower(services.name) like '%view%' then 'views'
+            when lower(services.name) like '%share%' then 'shares'
+            when lower(services.name) like '%repost%' or lower(services.name) like '%retweet%' then 'reposts'
+            when lower(services.name) like '%save%' or lower(services.name) like '%repin%' then 'saves'
+            when lower(services.name) like '%mention%' then 'mentions'
+            when lower(services.name) like '%vote%' then 'votes'
+            else 'other'
+          end
+        )`,
         pricePerThousand: sql<string | null>`(
           select provider_services.price_per_thousand
           from provider_services
