@@ -23,6 +23,8 @@ export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState("");
+  const [bulkAction, setBulkAction] = useState<"testing" | "syncing" | null>(null);
+  const [bulkMessage, setBulkMessage] = useState("");
 
   async function load() {
     const [settingsResponse, healthResponse] = await Promise.all([
@@ -53,6 +55,68 @@ export default function ProvidersPage() {
       await load();
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function testAllProviders() {
+    const enabled = providers.filter((provider) => provider.enabled);
+    if (!enabled.length) return;
+    setBulkAction("testing");
+    setBulkMessage("");
+    try {
+      const results = await Promise.allSettled(
+        enabled.map(async (provider) => {
+          const response = await fetch(
+            "/api/providers/health?provider=" + encodeURIComponent(provider.name),
+            { method: "POST" },
+          );
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error ?? "Health check failed.");
+          }
+          return provider.name;
+        }),
+      );
+      const passed = results.filter((result) => result.status === "fulfilled").length;
+      setBulkMessage("Health checks complete · " + passed + "/" + enabled.length + " providers passed");
+      await load();
+    } catch (error) {
+      setBulkMessage(error instanceof Error ? error.message : "Bulk health check failed.");
+    } finally {
+      setBulkAction(null);
+    }
+  }
+
+  async function syncAllCatalogs() {
+    const enabled = providers.filter((provider) => provider.enabled);
+    if (!enabled.length) return;
+    setBulkAction("syncing");
+    setBulkMessage("");
+    try {
+      const results = await Promise.allSettled(
+        enabled.map(async (provider) => {
+          const response = await fetch(
+            "/api/providers/catalog?provider=" + encodeURIComponent(provider.name),
+            { method: "POST" },
+          );
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error ?? "Catalog sync failed.");
+          }
+          return { name: provider.name, imported: Number(data.imported ?? 0) };
+        }),
+      );
+      const passed = results.filter((result) => result.status === "fulfilled").length;
+      const imported = results.reduce(
+        (total, result) => total + (result.status === "fulfilled" ? result.value.imported : 0),
+        0,
+      );
+      setBulkMessage("Catalog sync complete · " + passed + "/" + enabled.length + " providers · " + imported + " services imported");
+      await load();
+    } catch (error) {
+      setBulkMessage(error instanceof Error ? error.message : "Bulk catalog sync failed.");
+    } finally {
+      setBulkAction(null);
     }
   }
 
@@ -144,6 +208,28 @@ export default function ProvidersPage() {
               {enabledCount} enabled
             </span>
           </div>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void testAllProviders()}
+              disabled={bulkAction !== null || enabledCount === 0}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-xs font-bold text-[#06100c] disabled:opacity-40"
+            >
+              <CheckCircle2 size={14} />
+              {bulkAction === "testing" ? "Testing all..." : "Test all providers"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void syncAllCatalogs()}
+              disabled={bulkAction !== null || enabledCount === 0}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-2.5 text-xs font-bold text-slate-300 disabled:opacity-40"
+            >
+              <DatabaseZap size={14} />
+              {bulkAction === "syncing" ? "Syncing all..." : "Sync all catalogs"}
+            </button>
+          </div>
+          {bulkMessage ? <p className="mt-3 text-xs text-emerald-300">{bulkMessage}</p> : null}
 
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {providers.map((provider) => (
