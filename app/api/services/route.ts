@@ -30,6 +30,17 @@ export async function GET(request: Request) {
             limit 1
           ), 'other'),
           case
+            when lower(services.name) like '%app download and signup%' or lower(services.name) like '%download and signup%' then 'app_download_signup'
+            when lower(services.name) like '%signup + like%' or lower(services.name) like '%sign up + like%' then 'signup_like'
+            when lower(services.name) like '%page like%' then 'page_likes'
+            when lower(services.name) like '%group member%' then 'group_members'
+            when lower(services.name) like '%post share%' then 'post_shares'
+            when lower(services.name) like '%share to story%' or lower(services.name) like '%story share%' then 'story_shares'
+            when lower(services.name) like '%custom meme comment%' then 'custom_meme_comments'
+            when lower(services.name) like '%meme comment%' then 'meme_comments'
+            when lower(services.name) like '%poll vote%' then 'poll_votes'
+            when lower(services.name) like '%channel follow%' then 'channel_follows'
+            when lower(services.name) like '%repin%' then 'repins'
             when lower(services.name) like '%follower%' or lower(services.name) like '%follow%' then 'followers'
             when lower(services.name) like '%subscriber%' then 'subscribers'
             when lower(services.name) like '%member%' then 'members'
@@ -38,7 +49,7 @@ export async function GET(request: Request) {
             when lower(services.name) like '%view%' then 'views'
             when lower(services.name) like '%share%' then 'shares'
             when lower(services.name) like '%repost%' or lower(services.name) like '%retweet%' then 'reposts'
-            when lower(services.name) like '%save%' or lower(services.name) like '%repin%' then 'saves'
+            when lower(services.name) like '%save%' then 'saves'
             when lower(services.name) like '%mention%' then 'mentions'
             when lower(services.name) like '%vote%' then 'votes'
             else 'other'
