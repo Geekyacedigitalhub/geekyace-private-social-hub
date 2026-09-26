@@ -164,9 +164,24 @@ export async function POST(request: Request) {
         console.error("Provider order was created but local synchronization failed:", order.id);
         return NextResponse.json({ ok: false, error: "Order was submitted, but local status synchronization is pending. Do not resubmit this order." }, { status: 503 });
       }
-      await db.update(orders).set({ status: "failed", errorMessage: "Upstream provider submission failed.", updatedAt: new Date() }).where(eq(orders.id, order.id));
-      await db.insert(orderEvents).values({ orderId: order.id, eventType: "provider_submission_failed", message: "Order could not be submitted to upstream provider." });
-      return NextResponse.json({ ok: false, error: "Order could not be submitted to the configured provider." }, { status: 502 });
+      // A timeout/connection failure can happen after the provider accepted the
+      // order but before we received its ID. Marking it failed here would allow
+      // a retry to create a duplicate upstream order. Keep it pending instead;
+      // the idempotency key still prevents accidental resubmission.
+      await db.update(orders).set({
+        status: "pending",
+        errorMessage: "Provider submission outcome is uncertain; manual/provider reconciliation is required.",
+        updatedAt: new Date(),
+      }).where(eq(orders.id, order.id));
+      await db.insert(orderEvents).values({
+        orderId: order.id,
+        eventType: "provider_submission_uncertain",
+        message: "Provider submission outcome could not be confirmed. Order was left pending to prevent duplicate submission.",
+      });
+      return NextResponse.json(
+        { ok: false, pending: true, error: "Provider submission could not be confirmed. Do not resubmit this order; reconciliation is required.", order },
+        { status: 503 },
+      );
     }
   } catch (error) {
     console.error("Order creation failed:", error);
