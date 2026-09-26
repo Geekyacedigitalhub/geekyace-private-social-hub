@@ -217,6 +217,7 @@ function inferServiceType(category?: string, serviceName?: string, providerType?
     ["subscriber", "subscribers"],
     ["member", "members"],
     ["follower", "followers"],
+    ["follow", "followers"],
     ["mention", "mentions"],
     ["like", "likes"],
     ["comment", "comments"],
