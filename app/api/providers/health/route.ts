@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { desc, eq, lt } from "drizzle-orm";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { db } from "@/lib/db";
-import { providerBalanceSnapshots, providerHealth, providers } from "@/lib/db/schema";
+import { providerBalanceSnapshots, providerHealth, providerServices, providers } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 import { requireOwner } from "@/lib/auth/require-owner";
 import { requireSameOrigin } from "@/lib/security/csrf";
@@ -32,8 +32,26 @@ export async function GET(request: Request) {
         .from(providerHealth)
         .orderBy(desc(providerHealth.checkedAt))
         .limit(limit);
+    const providerRows = await db.select().from(providers);
+    const mappingRows = await db.select({ providerId: providerServices.providerId, active: providerServices.active }).from(providerServices);
+    const counts = new Map<string, { mappings:number; activeMappings:number }>();
+    for (const row of mappingRows) {
+      const current = counts.get(row.providerId) ?? { mappings:0, activeMappings:0 };
+      current.mappings++;
+      if (row.active) current.activeMappings++;
+      counts.set(row.providerId, current);
+    }
+    const latestByProvider = new Map<string, typeof rows[number]>();
+    for (const row of rows) {
+      if (!latestByProvider.has(row.providerId)) latestByProvider.set(row.providerId, row);
+    }
+    const providerSummary = providerRows.map((provider) => {
+      const latest = latestByProvider.get(provider.id);
+      const count = counts.get(provider.id) ?? { mappings:0, activeMappings:0 };
+      return { name: provider.name, enabled: provider.enabled, mappings: count.mappings, activeMappings: count.activeMappings, health: latest?.status ?? "unknown", latencyMs: latest?.responseTimeMs ?? null };
+    });
     return NextResponse.json(
-      { health: rows },
+      { health: rows, providers: providerSummary },
       { headers: { "Cache-Control": "no-store, max-age=0" } },
     );
   } catch (error) {
