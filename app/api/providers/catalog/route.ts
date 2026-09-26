@@ -222,6 +222,7 @@ function inferServiceType(category?: string, serviceName?: string, providerType?
     ["meme comments", "meme_comments"],
     ["meme comment", "meme_comments"],
     ["poll vote", "poll_votes"],
+    ["engagement pack", "engagement"],
     ["poll", "votes"],
     ["channel follow", "channel_follows"],
     ["channel followers", "channel_follows"],
