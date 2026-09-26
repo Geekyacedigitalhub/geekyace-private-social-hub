@@ -64,13 +64,13 @@ export async function POST(request: Request) {
         ? await tx.select().from(services).where(inArray(services.id, existingServiceIds))
         : [];
       const serviceById = new Map(referencedServices.map((service) => [service.id, service]));
-      const slugs = remoteServices
-        .map((remote) => (remote.name + "-" + remote.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 240))
-        .filter(Boolean);
-      const slugServices = slugs.length > 0
-        ? await tx.select().from(services).where(inArray(services.slug, slugs))
-        : [];
-      const serviceBySlug = new Map(slugServices.map((service) => [service.slug, service]));
+      const allServices = await tx.select().from(services);
+      const serviceByCanonicalKey = new Map(
+        allServices.map((service) => [
+          canonicalServiceKey(service.platformId, service.name),
+          service,
+        ]),
+      );
       const platformRows = await tx.select().from(platforms);
       const platformBySlug = new Map(platformRows.map((platform) => [platform.slug, platform]));
 
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
         const existingMapping = mappingByExternalId.get(remote.id);
         let serviceRow = existingMapping
           ? serviceById.get(existingMapping.serviceId)
-          : serviceBySlug.get(serviceSlug);
+          : serviceByCanonicalKey.get(canonicalServiceKey(platformRow.id, remote.name));
 
         if (!serviceRow) {
           const inserted = await tx.insert(services).values({
@@ -124,18 +124,19 @@ export async function POST(request: Request) {
           }).returning();
           serviceRow = inserted[0];
           if (!serviceRow) throw new Error("Service record could not be created.");
-          serviceBySlug.set(serviceSlug, serviceRow);
+          serviceByCanonicalKey.set(canonicalServiceKey(platformRow.id, remote.name), serviceRow);
         } else {
           const updated = await tx.update(services).set({
             platformId: platformRow.id,
             name: remote.name,
-            minQuantity: remote.min,
-            maxQuantity: remote.max,
+            minQuantity: Math.min(serviceRow.minQuantity, remote.min),
+            maxQuantity: Math.max(serviceRow.maxQuantity, remote.max),
             enabled: true,
             description: remote.type ? String(remote.type) : serviceRow.description,
           }).where(eq(services.id, serviceRow.id)).returning();
           serviceRow = updated[0];
           if (!serviceRow) throw new Error("Service record could not be updated.");
+          serviceByCanonicalKey.set(canonicalServiceKey(platformRow.id, remote.name), serviceRow);
         }
 
         const serviceType = inferServiceType(remote.category, remote.name, remote.type);
@@ -200,6 +201,17 @@ export async function POST(request: Request) {
     console.error("Provider catalog sync failed:", error);
     return NextResponse.json({ ok: false, error: "Catalog synchronization failed; existing catalog was preserved." }, { status: 502 });
   }
+}
+
+function canonicalServiceKey(platformId: string, name: string) {
+  const normalized = name
+    .normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\\s+/g, " ");
+  return platformId + ":" + normalized;
 }
 
 function inferServiceType(category?: string, serviceName?: string, providerType?: string) {
