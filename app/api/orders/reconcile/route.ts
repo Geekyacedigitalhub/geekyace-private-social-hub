@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders } from "@/lib/db/schema";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     }).where(and(
       eq(orders.id, orderId),
       eq(orders.status, "pending"),
+      isNull(orders.providerOrderId),
     )).returning()).at(0);
 
     if (!updated) {
