@@ -108,8 +108,8 @@ export async function POST(request: Request) {
 
     const serviceId = String(body.serviceId ?? "").trim();
     const requestedProviderId = String(body.providerId ?? "").trim();
-    if (requestedProviderId && !uuidPattern.test(requestedProviderId)) return NextResponse.json({ error: "Invalid provider selection." }, { status: 400 });
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (requestedProviderId && !uuidPattern.test(requestedProviderId)) return NextResponse.json({ error: "Invalid provider selection." }, { status: 400 });
     if (!uuidPattern.test(serviceId)) return NextResponse.json({ error: "Invalid service ID." }, { status: 400 });
     const target = String(body.target ?? "").trim();
     if (target.length > 2048) return NextResponse.json({ error: "Target is too long." }, { status: 400 });
