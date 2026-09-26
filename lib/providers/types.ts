@@ -2,7 +2,13 @@ export type ProviderService = {
   id: string; name: string; category?: string; type?: string; rate?: number;
   min: number; max: number; refill?: boolean; cancel?: boolean; raw?: unknown;
 };
-export type ProviderOrderRequest = { serviceId: string; target: string; quantity: number };
+export type ProviderOrderRequest = {
+  serviceId: string;
+  target: string;
+  quantity?: number;
+  fields?: Record<string, string>;
+  omitQuantity?: boolean;
+};
 export type ProviderOrderResponse = { providerOrderId: string; raw?: unknown };
 export type ProviderOrderStatus = {
   status: "pending" | "processing" | "completed" | "partial" | "failed" | "cancelled" | "unknown";
