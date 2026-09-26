@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     }
 
     if (fields.comments) {
-      const commentLines = fields.comments.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
+      const commentLines = fields.comments.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
       if (commentLines.length !== quantity) {
         return NextResponse.json({ error: `Comments must contain exactly ${quantity} non-empty lines.` }, { status: 400 });
       }
