@@ -95,6 +95,7 @@ export async function POST(request: Request) {
       target?: string;
       quantity?: number;
       fields?: Record<string, unknown>;
+      providerId?: string;
       idempotencyKey?: string;
     };
     const idempotencyKey = String(body.idempotencyKey ?? request.headers.get("idempotency-key") ?? "").trim();
@@ -106,6 +107,8 @@ export async function POST(request: Request) {
     if (existing) return replayResponse(existing);
 
     const serviceId = String(body.serviceId ?? "").trim();
+    const requestedProviderId = String(body.providerId ?? "").trim();
+    if (requestedProviderId && !uuidPattern.test(requestedProviderId)) return NextResponse.json({ error: "Invalid provider selection." }, { status: 400 });
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(serviceId)) return NextResponse.json({ error: "Invalid service ID." }, { status: 400 });
     const target = String(body.target ?? "").trim();
@@ -162,6 +165,9 @@ export async function POST(request: Request) {
     }
     const eligible = [...bestByProvider.values()];
     if (!eligible.length) return NextResponse.json({ error: "No enabled provider can fulfill this quantity for this service." }, { status: 409 });
+    if (requestedProviderId && !eligible.some((candidate) => candidate.provider.id === requestedProviderId)) {
+      return NextResponse.json({ error: "The selected provider is no longer compatible with this service or quantity." }, { status: 409 });
+    }
 
     const healthRows = await db.select({ providerId: providerHealth.providerId, status: providerHealth.status, responseTimeMs: providerHealth.responseTimeMs, checkedAt: providerHealth.checkedAt })
       .from(providerHealth).orderBy(desc(providerHealth.checkedAt)).limit(500);
@@ -178,7 +184,9 @@ export async function POST(request: Request) {
       if (ap !== bp) return ap - bp;
       return (ah?.responseTimeMs ?? Number.POSITIVE_INFINITY) - (bh?.responseTimeMs ?? Number.POSITIVE_INFINITY);
     });
-    const mapping = eligible[0];
+    const mapping = requestedProviderId
+      ? eligible.find((candidate) => candidate.provider.id === requestedProviderId)!
+      : eligible[0];
     const providerMin = mapping.mapping.minQuantity ?? service.minQuantity;
     const providerMax = mapping.mapping.maxQuantity ?? service.maxQuantity;
 
