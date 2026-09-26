@@ -113,7 +113,20 @@ export default function NewOrderPage() {
   const selected = services.find((x) => x.id === serviceId);
 
   useEffect(() => {
-    if (!serviceId) { setRouting({ selectedProviderId:null, candidates:[] }); return; }\n    fetch("/api/providers/routing?serviceId=" + encodeURIComponent(serviceId), { cache:"no-store" })\n      .then((r) => r.json())\n      .then((d:{selectedProviderId?:string|null;candidates?:RoutingCandidate[]}) => setRouting({ selectedProviderId:d.selectedProviderId ?? null, candidates:d.candidates ?? [] }))\n      .catch(() => setRouting({ selectedProviderId: null, candidates: [] }));\n  }, [serviceId]);
+    if (!serviceId) {
+      setRouting({ selectedProviderId: null, candidates: [] });
+      return;
+    }
+    fetch("/api/providers/routing?serviceId=" + encodeURIComponent(serviceId), { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { selectedProviderId?: string | null; candidates?: RoutingCandidate[] }) =>
+        setRouting({
+          selectedProviderId: d.selectedProviderId ?? null,
+          candidates: d.candidates ?? [],
+        }),
+      )
+      .catch(() => setRouting({ selectedProviderId: null, candidates: [] }));
+  }, [serviceId]);
   const requiredFields = selected?.orderRequirements?.requiredFields ?? [];
   const omitQuantity = selected?.orderRequirements?.omitQuantity === true;
 
