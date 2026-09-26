@@ -121,13 +121,13 @@ export default function NewOrderPage() {
     }
     fetch("/api/providers/routing?serviceId=" + encodeURIComponent(serviceId), { cache: "no-store" })
       .then((r) => r.json())
-      .then((d: { selectedProviderId?: string | null; candidates?: RoutingCandidate[] }) =>
+      .then((d: { selectedProviderId?: string | null; candidates?: RoutingCandidate[] }) => {
         setRouting({
           selectedProviderId: d.selectedProviderId ?? null,
           candidates: d.candidates ?? [],
         });
-        setProviderMode("auto"),
-      )
+        setProviderMode("auto");
+      })
       .catch(() => setRouting({ selectedProviderId: null, candidates: [] }));
   }, [serviceId]);
   const requiredFields = selected?.orderRequirements?.requiredFields ?? [];
