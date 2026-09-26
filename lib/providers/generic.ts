@@ -8,7 +8,7 @@ import type {
   ProviderRefillResponse,
 } from "./types";
 
-type GenericProviderConfig = { baseUrl: string; apiKey: string; timeoutMs?: number };
+type GenericProviderConfig = { baseUrl: string; apiKey: string; timeoutMs?: number; preserveTrailingSlash?: boolean };
 
 export class ProviderRejectedError extends Error {
   constructor(message: string) {
@@ -23,7 +23,10 @@ export class GenericPanelProvider implements ProviderAdapter {
   private readonly timeoutMs: number;
 
   constructor(config: GenericProviderConfig) {
-    this.baseUrl = config.baseUrl.trim().replace(/\/$/, "");
+    const normalizedBaseUrl = config.baseUrl.trim();
+    this.baseUrl = config.preserveTrailingSlash
+      ? (normalizedBaseUrl.endsWith("/") ? normalizedBaseUrl : normalizedBaseUrl + "/")
+      : normalizedBaseUrl.replace(/\/$/, "");
     this.apiKey = config.apiKey.trim();
     if (!this.baseUrl || !this.apiKey || this.baseUrl.length > 2048) throw new Error("Provider configuration is invalid.");
     validateProviderUrl(this.baseUrl);
