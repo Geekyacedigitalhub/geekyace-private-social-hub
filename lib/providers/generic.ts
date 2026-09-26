@@ -88,8 +88,8 @@ export class GenericPanelProvider implements ProviderAdapter {
         rate,
         min,
         max,
-        refill: Boolean(service.refill),
-        cancel: Boolean(service.cancel),
+        refill: toBoolean(service.refill),
+        cancel: toBoolean(service.cancel),
       });
     }
     return services;
@@ -182,6 +182,13 @@ function validateProviderUrl(value: string) {
   ) {
     throw new Error("Provider URL points to a private or local network address.");
   }
+}
+
+function toBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+  return false;
 }
 
 function toNumber(value: unknown) {
