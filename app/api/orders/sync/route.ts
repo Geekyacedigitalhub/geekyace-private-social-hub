@@ -107,8 +107,7 @@ export async function POST(request: Request) {
       const adapter = createProviderAdapter({
         name: providerRow.name,
         baseUrl: providerRow.baseUrl,
-        apiKey: process.env.PROVIDER_API_KEY ?? "",
-      });
+              });
       providerAdapterById.set(providerRow.id, adapter);
       return adapter;
     };
