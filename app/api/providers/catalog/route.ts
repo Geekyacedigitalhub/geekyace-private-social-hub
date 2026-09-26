@@ -14,13 +14,14 @@ export async function POST(request: Request) {
   if (denied) return denied;
   const originDenied = requireSameOrigin(request);
   if (originDenied) return originDenied;
-  const baseUrl = process.env.PROVIDER_API_BASE_URL?.trim() ?? "";
-  const apiKey = process.env.PROVIDER_API_KEY;
-  if (!baseUrl || !apiKey) return NextResponse.json({ error: "Provider API is not configured on the server." }, { status: 503 });
+  const requestedProvider = new URL(request.url).searchParams.get("provider")?.trim();
+  const providerName = requestedProvider || "TaskletPay";
 
   try {
-    const providerName = process.env.PROVIDER_NAME ?? "SMM Panel Nigeria";
-    const provider = createProviderAdapter({ name: providerName, baseUrl, apiKey });
+    const providerRow = (await db.select().from(providers).where(eq(providers.name, providerName))).at(0);
+    if (!providerRow || !providerRow.enabled) return NextResponse.json({ error: "Provider is not enabled." }, { status: 404 });
+    const baseUrl = providerRow.baseUrl.trim();
+    const provider = createProviderAdapter({ name: providerRow.name, baseUrl });
     const remoteServices = await provider.getServices();
 
     // An empty catalog is treated as a failed synchronization rather than a valid
