@@ -372,10 +372,10 @@ function inferPlatformName(category?: string, serviceName?: string) {
 
 function matchesPlatform(value: string, needle: string) {
   if (needle.length <= 2) {
-    return value.split(/[^a-z0-9]+/i).includes(needle.toLowerCase());
+    const tokens = value.split(/[^a-z0-9]+/i);
+    return tokens.includes(needle.toLowerCase());
   }
   return value.includes(needle);
-}
-");
+}");
   return new RegExp(`(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(value);
 }
