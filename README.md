@@ -2,6 +2,20 @@
 
 Private, single-user control panel for managing social-service orders through configured provider APIs.
 
+## Autonomous Content Engine
+
+The private hub now includes the foundation for GeekyAce Digital Hub's autonomous marketing system:
+
+- Brand profile and content-pillar model
+- Trend opportunity records and scoring
+- AI-ready content idea and asset pipeline
+- Social account and scheduled-post model
+- Performance metrics and content-run history
+- Private Content Engine dashboard
+- Server-side execution boundary for future trend, video and publishing adapters
+
+See `docs/content-engine.md` for the execution architecture.
+
 ## Milestone 1
 
 Foundation only:
