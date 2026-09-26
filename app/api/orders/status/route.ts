@@ -21,6 +21,12 @@ export async function POST(request: Request) {
     if(!uuidPattern.test(orderId)) return NextResponse.json({error:"Invalid order ID."},{status:400});
     const order=(await db.select().from(orders).where(eq(orders.id,orderId))).at(0);
     if(!order||!order.providerOrderId||!order.providerId) return NextResponse.json({error:"Order or provider order ID not found."},{status:404});
+    if (["completed", "failed", "cancelled"].includes(order.status)) {
+      return NextResponse.json(
+        { ok: true, order, providerStatus: order.status, reconciled: false },
+        { headers: { "Cache-Control": "no-store, max-age=0" } },
+      );
+    }
     const providerRow=(await db.select().from(providers).where(eq(providers.id,order.providerId))).at(0);
     if(!providerRow?.enabled) return NextResponse.json({error:"The provider assigned to this order is unavailable."},{status:409});
     if(order.providerOrderId.length>256) return NextResponse.json({error:"Provider order ID is invalid."},{status:409});
