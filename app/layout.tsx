@@ -2,18 +2,18 @@ import type { Metadata } from "next";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import "./globals.css";
-import { LayoutDashboard, ShoppingCart, Package, Boxes, ServerCog, RefreshCw, BarChart3, ScrollText, Settings, ShieldCheck, Zap } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, Boxes, ServerCog, RefreshCw, BarChart3, ScrollText, Settings, ShieldCheck, Zap, Sparkles } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "GeekyAce Social Hub",
-  description: "Private provider-backed social service control center.",
+  description: "Private GeekyAce Digital Hub social operations and autonomous content engine.",
 };
 
 type NavItem = readonly [string, string, LucideIcon];
 type NavGroup = { label: string; items: readonly NavItem[] };
 
 const groups: readonly NavGroup[] = [
-  { label: "Workspace", items: [["Dashboard", "/", LayoutDashboard], ["New Order", "/new-order", ShoppingCart], ["Orders", "/orders", Package]] },
+  { label: "Workspace", items: [["Dashboard", "/", LayoutDashboard], ["Content Engine", "/content", Sparkles], ["New Order", "/new-order", ShoppingCart], ["Orders", "/orders", Package]] },
   { label: "Operations", items: [["Services", "/services", Boxes], ["Providers", "/providers", ServerCog], ["Refills", "/refills", RefreshCw], ["Analytics", "/analytics", BarChart3]] },
   { label: "System", items: [["Logs", "/logs", ScrollText], ["Settings", "/settings", Settings]] },
 ];
