@@ -34,6 +34,7 @@ export async function GET(request: Request) {
             when lower(services.name) like '%signup + like%' or lower(services.name) like '%sign up + like%' then 'signup_like'
             when lower(services.name) like '%page like%' then 'page_likes'
             when lower(services.name) like '%group member%' then 'group_members'
+            when lower(services.name) like '%channel member%' then 'channel_members'
             when lower(services.name) like '%post share%' then 'post_shares'
             when lower(services.name) like '%share to story%' or lower(services.name) like '%story share%' then 'story_shares'
             when lower(services.name) like '%custom meme comment%' then 'custom_meme_comments'
