@@ -5,7 +5,8 @@ import { requireOwner } from "@/lib/auth/require-owner";
 export const runtime = "nodejs";
 
 export async function POST() {
-  await requireOwner();
+  const denied = await requireOwner();
+  if (denied) return denied;
   const candidates = getStarterTrendCandidates();
   return NextResponse.json({
     ok: true,
