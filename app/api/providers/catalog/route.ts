@@ -371,15 +371,10 @@ function inferPlatformName(category?: string, serviceName?: string) {
 }
 
 function matchesPlatform(value: string, needle: string) {
-  // Avoid short-token false positives such as "line" matching "online" or
-  // "vk" matching unrelated words. Provider service names are still matched
-  // when the platform appears as a standalone token or domain-like segment.
-  const escaped = needle.replace(/[.*+?^$\\{\\}()|[\\]\\]/g, "\\\\  for (const [needle, label] of platformMatchers) {
-    if (value.includes(needle)) return label;
+  if (needle.length <= 2) {
+    return new RegExp(`(^|[^a-z0-9])${needle}(?=$|[^a-z0-9])`, "i").test(value);
   }
-
-  if (/(^|\\s)x(\\s|$)/.test(value)) return "X";
-  return category?.trim() || "Other";
+  return value.includes(needle);
 }
 ");
   return new RegExp(`(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(value);
