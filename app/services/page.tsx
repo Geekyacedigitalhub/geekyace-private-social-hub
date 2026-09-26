@@ -32,6 +32,13 @@ const serviceTypeLabels: Record<string, string> = {
   watch_time: "Watch Time",
   profile_visits: "Profile Visits",
   engagement: "Engagement",
+  app_downloads: "App Downloads",
+  downloads: "Downloads",
+  signups: "Signups",
+  direct_messages: "Direct Messages",
+  bot_chat: "Bot Chat",
+  connections: "Connections",
+  sound_use: "Sound Use",
   other: "Other",
 };
 
