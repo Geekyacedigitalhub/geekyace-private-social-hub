@@ -93,19 +93,53 @@ export default function ProvidersPage() {
     setBulkAction("syncing");
     setBulkMessage("");
     try {
-      const results = await Promise.allSettled(
-        enabled.map(async (provider) => {
-          const response = await fetch(
-            "/api/providers/catalog?provider=" + encodeURIComponent(provider.name),
-            { method: "POST" },
-          );
-          const data = await response.json();
-          if (!response.ok || !data.ok) {
-            throw new Error(data.error ?? "Catalog sync failed.");
+      const results: Array<
+        | { status: "fulfilled"; value: { name: string; imported: number } }
+        | { status: "rejected"; reason: unknown }
+      > = [];
+
+      for (const provider of enabled) {
+        let completed = false;
+        let lastError: unknown = null;
+
+        for (let attempt = 1; attempt <= 3 && !completed; attempt += 1) {
+          try {
+            const response = await fetch(
+              "/api/providers/catalog?provider=" + encodeURIComponent(provider.name),
+              { method: "POST" },
+            );
+            const data = await response.json();
+
+            if (response.ok && data.ok) {
+              results.push({
+                status: "fulfilled",
+                value: { name: provider.name, imported: Number(data.imported ?? 0) },
+              });
+              completed = true;
+              continue;
+            }
+
+            lastError = new Error(data.error ?? "Catalog sync failed.");
+            if (response.status === 429 && attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
+              continue;
+            }
+            throw lastError;
+          } catch (error) {
+            lastError = error;
+            if (attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
+              continue;
+            }
           }
-          return { name: provider.name, imported: Number(data.imported ?? 0) };
-        }),
-      );
+        }
+
+        if (!completed) {
+          results.push({ status: "rejected", reason: lastError ?? new Error("Catalog sync failed.") });
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
       const passed = results.filter((result) => result.status === "fulfilled").length;
       const imported = results.reduce(
         (total, result) => total + (result.status === "fulfilled" ? result.value.imported : 0),
