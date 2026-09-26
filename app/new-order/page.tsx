@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Info, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Info, ShieldCheck, Sparkles, Zap, Activity } from "lucide-react";
 
 type OrderRequirements = {
   requiredFields?: string[];
   omitQuantity?: boolean;
 };
 
-type Service = {
+type RoutingCandidate = { providerId:string; provider:string; pricePerThousand:number|null; min:number; max:number; refillSupported:boolean; health:string; latencyMs:number|null; };\ntype Service = {
   id: string;
   name: string;
   platform: string;
@@ -94,7 +94,7 @@ export default function NewOrderPage() {
   const [quantity, setQuantity] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);\n  const [routing, setRouting] = useState<{selectedProviderId:string|null;candidates:RoutingCandidate[]}>({selectedProviderId:null,candidates:[]});
 
   useEffect(() => {
     fetch("/api/services")
@@ -108,7 +108,7 @@ export default function NewOrderPage() {
       .catch(() => setServices([]));
   }, []);
 
-  const selected = services.find((x) => x.id === serviceId);
+  const selected = services.find((x) => x.id === serviceId);\n\n  useEffect(() => {\n    if (!serviceId) { setRouting({ selectedProviderId:null, candidates:[] }); return; }\n    fetch("/api/providers/routing?serviceId=" + encodeURIComponent(serviceId), { cache:"no-store" })\n      .then((r) => r.json())\n      .then((d:{selectedProviderId?:string|null;candidates?:RoutingCandidate[]}) => setRouting({ selectedProviderId:d.selectedProviderId ?? null, candidates:d.candidates ?? [] }))\n      .catch(() => setRouting({ selectedProviderId:null, candidates:[] }));\n  }, [serviceId]);
   const requiredFields = selected?.orderRequirements?.requiredFields ?? [];
   const omitQuantity = selected?.orderRequirements?.omitQuantity === true;
 
@@ -239,7 +239,7 @@ export default function NewOrderPage() {
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Platform</span><span className="font-semibold text-slate-300">{selected?.platform ?? "—"}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Service type</span><span className="font-semibold text-slate-300">{selected ? typeLabel(selected.serviceType) : "—"}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Service</span><span className="max-w-[190px] text-right font-semibold text-slate-300">{selected?.name ?? "—"}</span></div>
-                <div className="flex justify-between gap-3"><span className="text-slate-600">Quantity</span><span className="font-semibold text-slate-300">{quantity ? Number(quantity).toLocaleString() : "—"}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-600">Quantity</span><span className="font-semibold text-slate-300">{quantity ? Number(quantity).toLocaleString() : "—"}</span></div>\n                <div className="border-t border-white/[0.06] pt-4"><div className="flex items-center gap-2"><Activity size={14} className="text-emerald-300"/><span className="text-slate-600">Provider routing</span></div><p className="mt-2 text-sm font-semibold text-emerald-300">{routing.selectedProviderId ? (routing.candidates.find(x=>x.providerId===routing.selectedProviderId)?.provider ?? "Smart Auto") : "No provider mapped yet"}</p><p className="mt-1 text-[11px] text-slate-600">{routing.candidates.length ? "Smart Auto compares health, price and latency." : "Sync provider catalogs to enable routing."}</p></div>
               </div>
             </div>
             <div className="rounded-3xl border border-white/[0.07] bg-white/[0.025] p-6">
