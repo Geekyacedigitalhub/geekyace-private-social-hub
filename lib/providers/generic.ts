@@ -104,9 +104,16 @@ export class GenericPanelProvider implements ProviderAdapter {
   }
 
   async createOrder(request: ProviderOrderRequest): Promise<ProviderOrderResponse> {
-    const result = await this.request<Record<string, unknown>>({
-      action: "add", service: request.serviceId, link: request.target, quantity: request.quantity,
-    });
+    const payload: Record<string, string | number> = {
+      action: "add",
+      service: request.serviceId,
+      link: request.target,
+    };
+    if (!request.omitQuantity && request.quantity !== undefined) payload.quantity = request.quantity;
+    for (const [key, value] of Object.entries(request.fields ?? {})) {
+      if (value.trim()) payload[key] = value.trim();
+    }
+    const result = await this.request<Record<string, unknown>>(payload);
     const providerOrderId = String(result.order ?? "");
     if (!providerOrderId || providerOrderId.length > 256) throw new Error("Provider did not return a valid order ID");
     return { providerOrderId };
