@@ -1,5 +1,6 @@
 import { GenericPanelProvider } from "./generic";
 import type { ProviderAdapter } from "./types";
+import { PawaBoostProvider } from "./pawaboost";
 
 export type ProviderConfig = {
   name: string;
@@ -28,8 +29,14 @@ export function createProviderAdapter(config: ProviderConfig): ProviderAdapter {
     throw new Error(`Provider "${config.name}" is missing its server-side configuration.`);
   }
 
+  if (config.name.trim() === "PawaBoost") {
+    return new PawaBoostProvider({ baseUrl: config.baseUrl, apiKey });
+  }
+
   return new GenericPanelProvider({
     baseUrl: config.baseUrl,
     apiKey,
+    preserveTrailingSlash:
+      config.name.trim() === "Caryvn" || config.name.trim() === "Really Simple Social",
   });
 }
