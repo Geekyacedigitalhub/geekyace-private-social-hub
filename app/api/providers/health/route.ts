@@ -63,7 +63,6 @@ export async function POST(request: Request) {
     const [balance, services] = await Promise.all([provider.getBalance(), provider.getServices()]);
     const latencyMs = Date.now() - started;
 
-    const providerRow = (await db.select().from(providers).where(eq(providers.name, providerName))).at(0);
     if (providerRow) {
       // Health and balance are telemetry, not an audit trail. Retain a bounded
       // history so repeated checks cannot grow these tables indefinitely.
