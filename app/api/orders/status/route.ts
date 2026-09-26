@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if(!uuidPattern.test(orderId)) return NextResponse.json({error:"Invalid order ID."},{status:400});
     const order=(await db.select().from(orders).where(eq(orders.id,orderId))).at(0);
     if(!order||!order.providerOrderId||!order.providerId) return NextResponse.json({error:"Order or provider order ID not found."},{status:404});
-    if (["completed", "failed", "cancelled"].includes(order.status)) {
+    if (["completed", "partial", "failed", "cancelled"].includes(order.status)) {
       return NextResponse.json(
         { ok: true, order, providerStatus: order.status, reconciled: false },
         { headers: { "Cache-Control": "no-store, max-age=0" } },
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if(order.providerOrderId.length>256) return NextResponse.json({error:"Provider order ID is invalid."},{status:409});
     const provider=createProviderAdapter({name:providerRow.name,baseUrl:providerRow.baseUrl,apiKey:process.env.PROVIDER_API_KEY??""});
     const status=await provider.getOrderStatus(order.providerOrderId);
-    const terminal=new Set(["completed","failed","cancelled"]);
+    const terminal=new Set(["completed","partial","failed","cancelled"]);
     const nextStatus=status.status==="unknown"||terminal.has(order.status)&&order.status!==status.status?order.status:status.status;
     const changed=nextStatus!==order.status||status.startCount!==order.startCount||status.currentCount!==order.currentCount||status.completedQuantity!==order.completedQuantity||status.remains!==order.remains;
     const updated=(await db.update(orders).set({status:nextStatus,startCount:status.startCount,currentCount:status.currentCount,completedQuantity:status.completedQuantity,remains:status.remains,updatedAt:new Date()}).where(and(
