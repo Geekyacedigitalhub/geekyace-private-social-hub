@@ -138,6 +138,7 @@ export async function POST(request: Request) {
         }
 
         const serviceType = inferServiceType(remote.category, remote.name, remote.type);
+        const orderRequirements = inferOrderRequirements(remote.category, remote.name, remote.type);
         platformCounts.set(platformName, (platformCounts.get(platformName) ?? 0) + 1);
         serviceTypeCounts.set(serviceType, (serviceTypeCounts.get(serviceType) ?? 0) + 1);
 
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
             serviceType,
             refillSupported: Boolean(remote.refill),
             cancelSupported: Boolean(remote.cancel),
+            orderRequirements,
           },
         };
 
@@ -238,6 +240,21 @@ function inferServiceType(category?: string, serviceName?: string, providerType?
   }
 
   return "other";
+}
+
+function inferOrderRequirements(category?: string, serviceName?: string, providerType?: string) {
+  const value = `${category ?? ""} ${serviceName ?? ""} ${providerType ?? ""}`.toLowerCase();
+  if (value.includes("custom comments package")) return { requiredFields: ["comments"], omitQuantity: true };
+  if (value.includes("custom comments")) return { requiredFields: ["comments"], omitQuantity: false };
+  if (value.includes("comment replies")) return { requiredFields: ["comments", "username"], omitQuantity: false };
+  if (value.includes("mentions with hashtags")) return { requiredFields: ["usernames", "hashtags"], omitQuantity: false };
+  if (value.includes("mentions user followers")) return { requiredFields: ["username"], omitQuantity: false };
+  if (value.includes("mentions media likers")) return { requiredFields: ["media_url"], omitQuantity: false };
+  if (value.includes("mentions hashtag")) return { requiredFields: ["hashtag"], omitQuantity: false };
+  if (value.includes("mentions")) return { requiredFields: ["usernames"], omitQuantity: false };
+  if (value.includes("invites from groups")) return { requiredFields: ["groups"], omitQuantity: false };
+  if (value.includes("poll")) return { requiredFields: ["answer_number"], omitQuantity: false };
+  return { requiredFields: [], omitQuantity: false };
 }
 
 function inferPlatformName(category?: string, serviceName?: string) {
