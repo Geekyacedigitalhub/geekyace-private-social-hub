@@ -44,7 +44,8 @@ function routingFingerprint(platform: string, serviceType: string, name: string)
     "pakistan", "indonesia", "turkey", "japan", "korea", "mexico",
   ];
 
-  const descriptors = descriptorTerms.filter((term) => raw.replace(/[^a-z0-9]+/g, " ").includes(term));
+  const descriptorWords = new Set(raw.replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter(Boolean));
+  const descriptors = descriptorTerms.filter((term) => descriptorWords.has(term));
   const core = raw
     .replace(/\[[^\]]*\]/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
