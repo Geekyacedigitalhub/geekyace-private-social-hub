@@ -109,7 +109,7 @@ export class GenericPanelProvider implements ProviderAdapter {
       service: request.serviceId,
       link: request.target,
     };
-    if (!request.omitQuantity && request.quantity !== undefined) payload.quantity = request.quantity;
+    if (request.quantity !== undefined && request.omitQuantity !== true) payload.quantity = request.quantity;
     for (const [key, value] of Object.entries(request.fields ?? {})) {
       if (value.trim()) payload[key] = value.trim();
     }
