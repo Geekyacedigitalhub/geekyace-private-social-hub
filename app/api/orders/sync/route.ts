@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       }
 
       const nextStatus =
-        ["completed", "failed", "cancelled"].includes(order.status)
+        ["completed", "partial", "failed", "cancelled"].includes(order.status)
           ? order.status
           : status.status;
 
