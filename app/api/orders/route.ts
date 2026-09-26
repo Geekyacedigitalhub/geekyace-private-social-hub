@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
+import { orderEvents, orders, providerHealth, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
 import { ProviderRejectedError } from "@/lib/providers/generic";
 import { requireOwner } from "@/lib/auth/require-owner";
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     if (quantity < service.minQuantity || quantity > service.maxQuantity) {
       return NextResponse.json({ error: "Quantity must be between " + service.minQuantity + " and " + service.maxQuantity + "." }, { status: 400 });
     }
-    const mapping = (await db
+    const candidates = await db
       .select({ mapping: providerServices, provider: providers })
       .from(providerServices)
       .innerJoin(providers, eq(providerServices.providerId, providers.id))
@@ -72,12 +72,32 @@ export async function POST(request: Request) {
         eq(providerServices.serviceId, service.id),
         eq(providerServices.active, true),
         eq(providers.enabled, true),
-      ))
-      .limit(1)).at(0);
-    if (!mapping) return NextResponse.json({ error: "No active provider mapping exists for this service." }, { status: 409 });
+      ));
+    const eligible = candidates.filter(({ mapping }) => {
+      const min = mapping.minQuantity ?? service.minQuantity;
+      const max = mapping.maxQuantity ?? service.maxQuantity;
+      return quantity >= min && quantity <= max;
+    });
+    if (!eligible.length) return NextResponse.json({ error: "No enabled provider can fulfill this quantity for this service." }, { status: 409 });
+
+    const healthRows = await db.select({ providerId: providerHealth.providerId, status: providerHealth.status, responseTimeMs: providerHealth.responseTimeMs, checkedAt: providerHealth.checkedAt })
+      .from(providerHealth).orderBy(desc(providerHealth.checkedAt)).limit(500);
+    const latestHealth = new Map<string, typeof healthRows[number]>();
+    for (const row of healthRows) if (!latestHealth.has(row.providerId)) latestHealth.set(row.providerId, row);
+    const healthRank: Record<string, number> = { healthy: 0, degraded: 1, unknown: 2, down: 3 };
+    eligible.sort((a, b) => {
+      const ah = latestHealth.get(a.provider.id);
+      const bh = latestHealth.get(b.provider.id);
+      const hr = (healthRank[ah?.status ?? "unknown"] ?? 2) - (healthRank[bh?.status ?? "unknown"] ?? 2);
+      if (hr !== 0) return hr;
+      const ap = a.mapping.pricePerThousand == null ? Number.POSITIVE_INFINITY : Number(a.mapping.pricePerThousand);
+      const bp = b.mapping.pricePerThousand == null ? Number.POSITIVE_INFINITY : Number(b.mapping.pricePerThousand);
+      if (ap !== bp) return ap - bp;
+      return (ah?.responseTimeMs ?? Number.POSITIVE_INFINITY) - (bh?.responseTimeMs ?? Number.POSITIVE_INFINITY);
+    });
+    const mapping = eligible[0];
     const providerMin = mapping.mapping.minQuantity ?? service.minQuantity;
     const providerMax = mapping.mapping.maxQuantity ?? service.maxQuantity;
-    if (quantity < providerMin || quantity > providerMax) return NextResponse.json({ error: "Quantity must be between " + providerMin + " and " + providerMax + " for the selected provider." }, { status: 400 });
 
     const requirements = getOrderRequirements(mapping.mapping.metadata);
     const rawFields = body.fields ?? {};
@@ -125,7 +145,7 @@ export async function POST(request: Request) {
     }
     let providerOrderId: string | undefined;
     try {
-      const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
+      const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl });
       const created = await provider.createOrder({
         serviceId: mapping.mapping.externalServiceId,
         target,
