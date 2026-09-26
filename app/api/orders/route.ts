@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       serviceId?: string;
       target?: string;
       quantity?: number;
+      fields?: Record<string, unknown>;
       idempotencyKey?: string;
     };
     const idempotencyKey = String(body.idempotencyKey ?? request.headers.get("idempotency-key") ?? "").trim();
@@ -77,6 +78,27 @@ export async function POST(request: Request) {
     const providerMax = mapping.mapping.maxQuantity ?? service.maxQuantity;
     if (quantity < providerMin || quantity > providerMax) return NextResponse.json({ error: "Quantity must be between " + providerMin + " and " + providerMax + " for the selected provider." }, { status: 400 });
 
+    const requirements = getOrderRequirements(mapping.mapping.metadata);
+    const rawFields = body.fields ?? {};
+    const fields: Record<string, string> = {};
+    for (const key of requirements.requiredFields) {
+      const value = typeof rawFields[key] === "string" ? rawFields[key].trim() : "";
+      if (!value) return NextResponse.json({ error: `The selected service requires: ${requirements.requiredFields.join(", ")}.` }, { status: 400 });
+      if (value.length > 20_000) return NextResponse.json({ error: `Order field "${key}" is too long.` }, { status: 400 });
+      fields[key] = value;
+    }
+
+    if (fields.answer_number && !["1", "2"].includes(fields.answer_number)) {
+      return NextResponse.json({ error: "Poll answer must be 1 or 2." }, { status: 400 });
+    }
+
+    if (fields.comments) {
+      const commentLines = fields.comments.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
+      if (commentLines.length !== quantity) {
+        return NextResponse.json({ error: `Comments must contain exactly ${quantity} non-empty lines.` }, { status: 400 });
+      }
+    }
+
     let order;
     try {
       order = (await db.insert(orders).values({
@@ -103,7 +125,13 @@ export async function POST(request: Request) {
     let providerOrderId: string | undefined;
     try {
       const provider = createProviderAdapter({ name: mapping.provider.name, baseUrl: mapping.provider.baseUrl, apiKey: process.env.PROVIDER_API_KEY ?? "" });
-      const created = await provider.createOrder({ serviceId: mapping.mapping.externalServiceId, target, quantity });
+      const created = await provider.createOrder({
+        serviceId: mapping.mapping.externalServiceId,
+        target,
+        quantity,
+        fields,
+        omitQuantity: requirements.omitQuantity,
+      });
       providerOrderId = created.providerOrderId;
 
       // Record the upstream ID immediately after provider acceptance so the
@@ -144,6 +172,18 @@ export async function POST(request: Request) {
     console.error("Order creation failed:", error);
     return NextResponse.json({ ok: false, error: "Unable to create order." }, { status: 500 });
   }
+}
+
+function getOrderRequirements(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return { requiredFields: [] as string[], omitQuantity: false };
+  const value = metadata as { orderRequirements?: unknown };
+  const requirements = value.orderRequirements;
+  if (!requirements || typeof requirements !== "object") return { requiredFields: [] as string[], omitQuantity: false };
+  const data = requirements as { requiredFields?: unknown; omitQuantity?: unknown };
+  const requiredFields = Array.isArray(data.requiredFields)
+    ? data.requiredFields.filter((field): field is string => typeof field === "string").slice(0, 8)
+    : [];
+  return { requiredFields, omitQuantity: data.omitQuantity === true };
 }
 
 export async function GET(request: Request) {
