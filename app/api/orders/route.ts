@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orderEvents, orders, providerServices, providers, services } from "@/lib/db/schema";
 import { createProviderAdapter } from "@/lib/providers";
+import { ProviderRejectedError } from "@/lib/providers/generic";
 import { requireOwner } from "@/lib/auth/require-owner";
 import { requireSameOrigin } from "@/lib/security/csrf";
 
@@ -159,7 +160,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "Order was submitted, but local status synchronization is pending. Do not resubmit this order." }, { status: 503 });
       }
       return NextResponse.json({ ok: true, order: updated });
-    } catch {
+    } catch (error) {
+      if (error instanceof ProviderRejectedError) {
+        const message = error.message || "Provider rejected the order.";
+        await db.update(orders).set({
+          status: "failed",
+          errorMessage: message,
+          updatedAt: new Date(),
+        }).where(eq(orders.id, order.id));
+        try {
+          await db.insert(orderEvents).values({
+            orderId: order.id,
+            eventType: "provider_rejected",
+            message: "Provider rejected the order.",
+            payload: { reason: message },
+          });
+        } catch (eventError) {
+          console.error("Provider rejection event logging failed:", eventError);
+        }
+        return NextResponse.json(
+          { ok: false, error: message, order: { ...order, status: "failed", errorMessage: message } },
+          { status: 502 },
+        );
+      }
       if (providerOrderId) {
         console.error("Provider order was created but local synchronization failed:", order.id);
         return NextResponse.json({ ok: false, error: "Order was submitted, but local status synchronization is pending. Do not resubmit this order." }, { status: 503 });
