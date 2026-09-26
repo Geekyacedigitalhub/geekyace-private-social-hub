@@ -110,7 +110,8 @@ export default function NewOrderPage() {
       .catch(() => setServices([]));
   }, []);
 
-  const selected = services.find((x) => x.id === serviceId);\n
+  const selected = services.find((x) => x.id === serviceId);
+
   useEffect(() => {
     if (!serviceId) { setRouting({ selectedProviderId:null, candidates:[] }); return; }\n    fetch("/api/providers/routing?serviceId=" + encodeURIComponent(serviceId), { cache:"no-store" })\n      .then((r) => r.json())\n      .then((d:{selectedProviderId?:string|null;candidates?:RoutingCandidate[]}) => setRouting({ selectedProviderId:d.selectedProviderId ?? null, candidates:d.candidates ?? [] }))\n      .catch(() => setRouting({ selectedProviderId: null, candidates: [] }));\n  }, [serviceId]);
   const requiredFields = selected?.orderRequirements?.requiredFields ?? [];
