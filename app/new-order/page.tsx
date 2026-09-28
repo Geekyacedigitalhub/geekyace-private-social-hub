@@ -270,6 +270,7 @@ export default function NewOrderPage() {
   </div>
   <p className="mt-2 text-sm font-semibold text-emerald-300">{routing.selectedProviderId ? (routing.candidates.find(x=>x.providerId===routing.selectedProviderId)?.provider ?? "Smart Auto") : "No provider mapped yet"}</p>
   <p className="mt-1 text-[11px] text-slate-600">{routing.candidates.length ? (providerMode === "manual" ? "Manual selection is active. The order will use the selected compatible provider." : "Smart Auto compares service match, health, price and latency.") : "No compatible provider is currently mapped."}</p>
+  {routing.candidates.some((x) => x.pricePerThousand != null) ? <p className="mt-2 text-[10px] text-slate-700">Rates are shown per 1,000 units. “This order” updates from the quantity you enter.</p> : null}
 </div>
               </div>
             </div>
@@ -299,13 +300,19 @@ export default function NewOrderPage() {
                           </div>
                           {selectedProvider && providerMode === "manual" ? <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Selected</span> : null}
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-[10px]">
-                          <span className="text-slate-600">Price / 1K</span>
-                          <span className="font-semibold text-slate-300">{candidate.pricePerThousand == null ? "—" : Number(candidate.pricePerThousand).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-xl border border-white/[0.06] bg-black/10 p-2.5">
+                            <span className="block text-[9px] uppercase tracking-wider text-slate-600">Rate / 1K</span>
+                            <span className="mt-1 block text-sm font-bold text-emerald-300">{candidate.pricePerThousand == null ? "Not available" : Number(candidate.pricePerThousand).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="rounded-xl border border-white/[0.06] bg-black/10 p-2.5">
+                            <span className="block text-[9px] uppercase tracking-wider text-slate-600">This order</span>
+                            <span className="mt-1 block text-sm font-bold text-white">{candidate.pricePerThousand == null || !quantity ? "—" : Number(candidate.pricePerThousand * Number(quantity) / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                          </div>
                         </div>
-                        <div className="mt-1 flex items-center justify-between text-[10px]">
-                          <span className="text-slate-600">Range</span>
-                          <span className="text-slate-500">{candidate.min.toLocaleString()} – {candidate.max.toLocaleString()}{candidate.refillSupported ? " · Refill" : ""}</span>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+                          <span className="text-slate-600">Range: <span className="text-slate-500">{candidate.min.toLocaleString()} – {candidate.max.toLocaleString()}</span></span>
+                          <span className={candidate.refillSupported ? "font-semibold text-emerald-300" : "text-slate-600"}>{candidate.refillSupported ? "✓ Refill supported" : "No refill"}</span>
                         </div>
                       </button>
                     );
