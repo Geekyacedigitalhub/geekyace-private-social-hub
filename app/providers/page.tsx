@@ -4,6 +4,7 @@ import { Activity, AlertTriangle, CheckCircle2, DatabaseZap, KeyRound, RefreshCw
 import { useEffect, useState } from "react";
 import { ProviderTest } from "./provider-test";
 import { CatalogSync } from "./catalog-sync";
+import { ProviderGuide } from "./provider-guide";
 
 type Settings = { providerConfigured: boolean };
 type Health = { status: string; latencyMs?: number };
@@ -299,6 +300,8 @@ export default function ProvidersPage() {
           </div>
           {syncMessage ? <p className="mt-4 text-xs text-emerald-300">{syncMessage}</p> : null}
         </section>
+
+        <ProviderGuide />
 
         <section className="mt-5 grid gap-5 lg:grid-cols-2">
           <div className="gx-card rounded-2xl p-6">
