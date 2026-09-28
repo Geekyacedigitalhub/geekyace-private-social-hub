@@ -295,6 +295,23 @@ export default function NewOrderPage() {
                   {selectedCategory?.providers.map((x) => <option key={x.providerId} value={x.providerId}>{x.provider} · {x.serviceCount} services · {providerRateLabel(x)}</option>)}
                 </select>
                 <span className="mt-2 block text-[11px] text-slate-600">{selectedCategory ? selectedCategory.providers.length + " provider" + (selectedCategory.providers.length === 1 ? "" : "s") + " has matching services for this category. Rates shown are provider catalog rates per 1,000." : "Choose a category first."}</span>
+                {providerId && selectedCategory?.providers.find((x) => x.providerId === providerId) ? (() => {
+                  const provider = selectedCategory.providers.find((x) => x.providerId === providerId)!;
+                  const prices = provider.services.map((x) => x.pricePerThousand).filter((x): x is number => x != null);
+                  const minRate = prices.length ? Math.min(...prices) : null;
+                  const maxRate = prices.length ? Math.max(...prices) : null;
+                  const refillCount = provider.services.filter((x) => x.refillSupported).length;
+                  return (
+                    <div className="mt-3 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.035] p-3">
+                      <div className="grid grid-cols-2 gap-3 text-[11px]">
+                        <div><span className="block text-slate-600">Services</span><span className="mt-1 block font-semibold text-slate-200">{provider.serviceCount}</span></div>
+                        <div><span className="block text-slate-600">Refill</span><span className="mt-1 block font-semibold text-slate-200">{refillCount}/{provider.serviceCount}</span></div>
+                        <div><span className="block text-slate-600">Rate / 1K</span><span className="mt-1 block font-semibold text-emerald-300">{minRate == null ? "Unavailable" : minRate === maxRate ? minRate.toLocaleString(undefined, { maximumFractionDigits: 4 }) : minRate.toLocaleString(undefined, { maximumFractionDigits: 4 }) + " – " + maxRate!.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span></div>
+                        <div><span className="block text-slate-600">Status</span><span className="mt-1 block font-semibold text-emerald-300">Catalog available</span></div>
+                      </div>
+                    </div>
+                  );
+                })() : null}
               </label>
 
               <label className="block">
