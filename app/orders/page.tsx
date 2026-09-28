@@ -14,6 +14,26 @@ export default function OrdersPage(){
  async function refreshOrder(id:string){setRefreshing(id);try{const r=await fetch("/api/orders/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:id})}),d=await r.json();if(!r.ok)throw new Error(d.error??"Unable to refresh order.");setOrders(x=>x.map(o=>o.id===id?d.order:o));}catch(e){setError(e instanceof Error?e.message:"Unable to refresh order.");}finally{setRefreshing(null);}}
  async function reconcileOrder(id:string){if(!window.confirm("This order has no provider order ID. Mark it failed because the original provider submission could not be confirmed?"))return;setReconciling(id);try{const r=await fetch("/api/orders/reconcile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:id,reason:"Provider submission outcome was not confirmed and no provider order ID was recovered; owner reconciled the unresolved order to prevent indefinite pending state."})}),d=await r.json();if(!r.ok)throw new Error(d.error??"Unable to reconcile order.");setOrders(x=>x.map(o=>o.id===id?d.order:o));setError("");}catch(e){setError(e instanceof Error?e.message:"Unable to reconcile order.");}finally{setReconciling(null);}}
  useEffect(()=>{void loadOrders();},[]);
+
+ useEffect(()=>{
+  const interval=window.setInterval(async()=>{
+   try{
+    const response=await fetch("/api/orders?limit=200",{cache:"no-store"});
+    const data=await response.json();
+    if(!response.ok) return;
+    const latest=data.orders??[];
+    setOrders(latest);
+    const active=latest.filter((o:Order)=>["pending","processing","partial"].includes(o.status)&&o.providerOrderId);
+    await Promise.allSettled(active.slice(0,20).map((o:Order)=>fetch("/api/orders/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:o.id})})));
+    if(active.length){
+      const refreshed=await fetch("/api/orders?limit=200",{cache:"no-store"});
+      const refreshedData=await refreshed.json();
+      if(refreshed.ok) setOrders(refreshedData.orders??[]);
+    }
+   }catch{}
+  },30000);
+  return()=>window.clearInterval(interval);
+ },[]);
  const needle=query.trim().toLowerCase(), statusCounts=orders.reduce<Record<string,number>>((acc,o)=>{acc[o.status]=(acc[o.status]??0)+1;return acc},{}), filtered=orders.filter(o=>(statusFilter==="all"||o.status===statusFilter)&&(!needle||o.id.toLowerCase().includes(needle)||o.target.toLowerCase().includes(needle)));
  return <main className="min-h-screen bg-[#06100c]"><div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10">
   <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between"><div><Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link><div className="mt-5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><Activity size={13}/> Operations</div><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Orders</h1><p className="mt-2 text-sm text-slate-500">Track fulfillment, provider progress and current order state.</p></div><Link href="/new-order" className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-[#06100c]"><Plus size={16}/> New order</Link></header>
