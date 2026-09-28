@@ -20,6 +20,21 @@ type Service = {
   orderRequirements?: OrderRequirements;
 };
 
+type CategoryProvider = {
+  providerId: string;
+  provider: string;
+  serviceCount: number;
+  services: Array<{ id: string; name: string; min: number; max: number; pricePerThousand: number | null; refillSupported: boolean }>;
+};
+
+type Category = {
+  id: string;
+  label: string;
+  platform: string;
+  type: string;
+  providers: CategoryProvider[];
+};
+
 const typeLabel = (value?: string) => ({
   followers: "Followers",
   likes: "Likes",
@@ -98,8 +113,16 @@ export default function NewOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [routing, setRouting] = useState<{selectedProviderId:string|null;candidates:RoutingCandidate[]}>({selectedProviderId:null,candidates:[]});
   const [providerMode, setProviderMode] = useState<"auto" | "manual">("auto");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
+  const [providerId, setProviderId] = useState("");
 
   useEffect(() => {
+    fetch("/api/providers/category", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { categories?: Category[] }) => setCategories(d.categories ?? []))
+      .catch(() => setCategories([]));
+
     fetch("/api/services")
       .then((r) => r.json())
       .then((d: { services?: Service[] }) => {
@@ -112,6 +135,16 @@ export default function NewOrderPage() {
   }, []);
 
   const selected = services.find((x) => x.id === serviceId);
+  const selectedCategory = categories.find((x) => x.id === categoryId);
+  const categoryServices = selectedCategory
+    ? selectedCategory.providers.flatMap((p) => p.services.map((s) => ({ ...s, providerId: p.providerId })))
+    : [];
+  const providerServices = providerId
+    ? categoryServices.filter((s) => s.providerId === providerId)
+    : categoryServices;
+  const visibleServices = categoryId
+    ? services.filter((service) => providerServices.some((item) => item.id === service.id))
+    : services;
 
   useEffect(() => {
     if (!serviceId) {
@@ -138,6 +171,30 @@ export default function NewOrderPage() {
     return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length;
   }, [fields.comments]);
 
+  function changeCategory(id: string) {
+    setCategoryId(id);
+    setProviderId("");
+    setProviderMode("auto");
+    setServiceId("");
+    setFields({});
+    setQuantity("");
+    setMessage("");
+  }
+
+  function changeProvider(id: string) {
+    setProviderId(id);
+    setProviderMode(id ? "manual" : "auto");
+    const providerServiceIds = id
+      ? new Set((selectedCategory?.providers.find((p) => p.providerId === id)?.services ?? []).map((s) => s.id))
+      : null;
+    if (serviceId && providerServiceIds && !providerServiceIds.has(serviceId)) {
+      setServiceId("");
+      setFields({});
+      setQuantity("");
+    }
+    setMessage("");
+  }
+
   function changeService(id: string) {
     setServiceId(id);
     setFields({});
@@ -159,7 +216,7 @@ export default function NewOrderPage() {
     setSubmitting(true);
     setMessage("");
     const idempotencyKey = crypto.randomUUID();
-    const selectedProviderId = providerMode === "manual" ? routing.selectedProviderId : undefined;
+    const selectedProviderId = providerMode === "manual" ? (providerId || routing.selectedProviderId) : undefined;
 
     try {
       const r = await fetch("/api/orders", {
@@ -213,10 +270,27 @@ export default function NewOrderPage() {
 
             <form onSubmit={submitOrder} className="mt-7 space-y-6">
               <label className="block">
+                <span className="text-xs font-semibold text-slate-400">Category</span>
+                <select required value={categoryId} onChange={(e) => changeCategory(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#0b1913] px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50">
+                  <option value="">Select a category</option>
+                  {categories.map((x) => <option key={x.id} value={x.id}>{x.label.replace(/\b\w/g, (m) => m.toUpperCase())}</option>)}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-semibold text-slate-400">Provider</span>
+                <select required value={providerId} onChange={(e) => changeProvider(e.target.value)} disabled={!selectedCategory} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#0b1913] px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50 disabled:opacity-50">
+                  <option value="">Select a provider</option>
+                  {selectedCategory?.providers.map((x) => <option key={x.providerId} value={x.providerId}>{x.provider} · {x.serviceCount} services</option>)}
+                </select>
+                <span className="mt-2 block text-[11px] text-slate-600">{selectedCategory ? selectedCategory.providers.length + " provider" + (selectedCategory.providers.length === 1 ? "" : "s") + " has matching services for this category." : "Choose a category first."}</span>
+              </label>
+
+              <label className="block">
                 <span className="text-xs font-semibold text-slate-400">Service</span>
-                <select required value={serviceId} onChange={(e) => changeService(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#0b1913] px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50">
+                <select required value={serviceId} onChange={(e) => changeService(e.target.value)} disabled={!providerId} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#0b1913] px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50 disabled:opacity-50">
                   <option value="">Select a service</option>
-                  {services.map((x) => <option key={x.id} value={x.id}>{x.platform} — {x.name}</option>)}
+                  {visibleServices.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                 </select>
                 {selected ? <span className="mt-2 block text-[11px] text-emerald-300/80">{selected.platform} · {typeLabel(selected.serviceType)}</span> : null}
               </label>
