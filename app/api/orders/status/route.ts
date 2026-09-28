@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const providerRow=(await db.select().from(providers).where(eq(providers.id,order.providerId))).at(0);
     if(!providerRow?.enabled) return NextResponse.json({error:"The provider assigned to this order is unavailable."},{status:409});
     if(order.providerOrderId.length>256) return NextResponse.json({error:"Provider order ID is invalid."},{status:409});
-    const provider=createProviderAdapter({name:providerRow.name,baseUrl:providerRow.baseUrl,apiKey:process.env.PROVIDER_API_KEY??""});
+    const provider=createProviderAdapter({name:providerRow.name,baseUrl:providerRow.baseUrl});
     const status=await provider.getOrderStatus(order.providerOrderId);
     const terminal=new Set(["completed","partial","failed","cancelled"]);
     const nextStatus=status.status==="unknown"||terminal.has(order.status)&&order.status!==status.status?order.status:status.status;
