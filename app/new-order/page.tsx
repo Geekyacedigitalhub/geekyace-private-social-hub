@@ -142,6 +142,17 @@ export default function NewOrderPage() {
   const providerServices = providerId
     ? categoryServices.filter((s) => s.providerId === providerId)
     : categoryServices;
+
+  function providerRateLabel(provider: CategoryProvider) {
+    const prices = provider.services
+      .map((service) => service.pricePerThousand)
+      .filter((price): price is number => price != null);
+    if (!prices.length) return "rate unavailable";
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const format = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    return min === max ? "from " + format(min) + " / 1K" : format(min) + "–" + format(max) + " / 1K";
+  }
   const visibleServices = categoryId
     ? services.filter((service) => providerServices.some((item) => item.id === service.id))
     : services;
@@ -281,9 +292,9 @@ export default function NewOrderPage() {
                 <span className="text-xs font-semibold text-slate-400">Provider</span>
                 <select required value={providerId} onChange={(e) => changeProvider(e.target.value)} disabled={!selectedCategory} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#0b1913] px-3.5 py-3 text-sm text-white outline-none focus:border-emerald-400/50 disabled:opacity-50">
                   <option value="">Select a provider</option>
-                  {selectedCategory?.providers.map((x) => <option key={x.providerId} value={x.providerId}>{x.provider} · {x.serviceCount} services</option>)}
+                  {selectedCategory?.providers.map((x) => <option key={x.providerId} value={x.providerId}>{x.provider} · {x.serviceCount} services · {providerRateLabel(x)}</option>)}
                 </select>
-                <span className="mt-2 block text-[11px] text-slate-600">{selectedCategory ? selectedCategory.providers.length + " provider" + (selectedCategory.providers.length === 1 ? "" : "s") + " has matching services for this category." : "Choose a category first."}</span>
+                <span className="mt-2 block text-[11px] text-slate-600">{selectedCategory ? selectedCategory.providers.length + " provider" + (selectedCategory.providers.length === 1 ? "" : "s") + " has matching services for this category. Rates shown are provider catalog rates per 1,000." : "Choose a category first."}</span>
               </label>
 
               <label className="block">
