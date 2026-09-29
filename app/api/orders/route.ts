@@ -311,6 +311,17 @@ export async function POST(request: Request) {
                 console.error("Provider failover event logging failed:", eventError);
               }
 
+              try {
+                await db.insert(orderEvents).values({
+                  orderId: order.id,
+                  eventType: "provider_submitted",
+                  message: "Fallback provider accepted the order.",
+                  payload: { providerOrderId: fallbackCreated.providerOrderId },
+                });
+              } catch (eventError) {
+                console.error("Fallback provider submission event logging failed:", eventError);
+              }
+
               const fallbackUpdated = await db.update(orders).set({
                 providerId: alternative.provider.id,
                 status: "processing",
