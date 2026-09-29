@@ -105,6 +105,12 @@ export async function GET(request: Request) {
   for (const row of healthRows) if (!latestHealth.has(row.providerId)) latestHealth.set(row.providerId, row);
 
   const healthRank: Record<string, number> = { healthy: 0, degraded: 1, unknown: 2, down: 3 };
+  const healthFreshnessMs = 30 * 60 * 1000;
+  const effectiveHealth = (providerId: string) => {
+    const health = latestHealth.get(providerId);
+    if (!health?.checkedAt || Date.now() - new Date(health.checkedAt).getTime() > healthFreshnessMs) return "unknown";
+    return health.status;
+  };
   const scored = allRows
     .map(({ mapping, provider, service: candidateService, platform }) => {
       const candidateType = String(mapping.metadata && typeof mapping.metadata === "object"
@@ -138,7 +144,7 @@ export async function GET(request: Request) {
       min: mapping.minQuantity ?? service.minQuantity,
       max: mapping.maxQuantity ?? service.maxQuantity,
       refillSupported: mapping.refillSupported,
-      health: health?.status ?? "unknown",
+      health: effectiveHealth(provider.id),
       latencyMs: health?.responseTimeMs ?? null,
       matchScore: score,
     };
