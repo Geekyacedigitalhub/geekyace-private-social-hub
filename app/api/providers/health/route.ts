@@ -69,9 +69,10 @@ export async function POST(request: Request) {
   if (originDenied) return originDenied;
   const requestedProvider = new URL(request.url).searchParams.get("provider")?.trim();
   const providerName = requestedProvider || "TaskletPay";
+  let providerRow: typeof providers.$inferSelect | undefined;
 
   try {
-    const providerRow = (await db.select().from(providers).where(eq(providers.name, providerName))).at(0);
+    providerRow = (await db.select().from(providers).where(eq(providers.name, providerName))).at(0);
     if (!providerRow) {
       return NextResponse.json({ error: "Provider not found." }, { status: 404 });
     }
