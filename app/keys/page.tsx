@@ -1,0 +1,23 @@
+"use client";
+import Link from "next/link";
+import {useEffect,useState} from "react";
+import {CheckCircle2,KeyRound,LockKeyhole,RefreshCw,ShieldCheck,XCircle} from "lucide-react";
+
+type KeyRow={name:string;configured:boolean;source:string;lastFour:string|null};
+
+export default function ApiKeysPage(){
+ const[rows,setRows]=useState<KeyRow[]>([]),[loading,setLoading]=useState(true);
+ async function load(){setLoading(true);try{const r=await fetch("/api/keys",{cache:"no-store"});const d=await r.json();if(r.ok)setRows(d.keys??[])}finally{setLoading(false)}}
+ useEffect(()=>{void load()},[]);
+ const configured=rows.filter(x=>x.configured).length;
+ return <main className="gx-page min-h-screen p-6 lg:p-8"><div className="mx-auto max-w-[1200px]">
+  <div className="text-xs text-slate-500"><Link href="/" className="hover:text-emerald-600">Dashboard</Link> / API Keys</div>
+  <header className="mt-6 flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-emerald-600">Security</p><h1 className="mt-2 text-3xl font-bold text-slate-900">API Keys</h1><p className="mt-1 text-sm text-slate-500">Manage provider credential status without exposing secrets.</p></div><button onClick={()=>void load()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"><RefreshCw size={16} className={loading?"animate-spin":""}/> Refresh</button></header>
+  <section className="mt-7 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Providers</p><p className="mt-2 text-2xl font-bold text-slate-900">{rows.length}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Configured keys</p><p className="mt-2 text-2xl font-bold text-emerald-600">{configured}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Secrets exposed</p><p className="mt-2 text-2xl font-bold text-emerald-600">0</p></div></section>
+  <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4"><h2 className="text-sm font-bold text-slate-900">Provider credentials</h2><p className="mt-1 text-[11px] text-slate-500">Keys are read only on the server. Only configuration status and a masked suffix are shown.</p></div>
+   <div className="divide-y divide-slate-100">{rows.map(row=><div key={row.name} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className={"grid h-10 w-10 place-items-center rounded-xl "+(row.configured?"bg-emerald-50 text-emerald-600":"bg-amber-50 text-amber-600")}><KeyRound size={18}/></div><div><p className="text-sm font-bold text-slate-900">{row.name}</p><p className="mt-1 text-[11px] text-slate-400">{row.source}{row.lastFour?" · ••••"+row.lastFour:" · no key configured"}</p></div></div><div className={"inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold "+(row.configured?"border-emerald-100 bg-emerald-50 text-emerald-700":"border-amber-100 bg-amber-50 text-amber-700")}>{row.configured?<><CheckCircle2 size={14}/>Configured</>:<><XCircle size={14}/>Missing</>}</div></div>)}</div>
+  </section>
+  <div className="mt-5 grid gap-5 md:grid-cols-2"><div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5"><div className="flex gap-3"><ShieldCheck size={18} className="mt-0.5 shrink-0 text-emerald-600"/><div><h3 className="text-sm font-bold text-slate-900">Server-side protection</h3><p className="mt-1 text-xs leading-5 text-slate-600">Provider keys never need to be sent to the browser. Orders and provider requests use server-side environment configuration.</p></div></div></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex gap-3"><LockKeyhole size={18} className="mt-0.5 shrink-0 text-slate-500"/><div><h3 className="text-sm font-bold text-slate-900">Change a key</h3><p className="mt-1 text-xs leading-5 text-slate-500">Update the provider secret in your hosting environment, then refresh this page. The actual key is intentionally never displayed.</p></div></div></div></div>
+  <p className="mt-5 text-center text-[11px] text-slate-400">No copy, reveal, or browser-side edit control is provided for provider secrets.</p>
+ </div></main>
+}
