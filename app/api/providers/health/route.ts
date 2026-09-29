@@ -81,34 +81,32 @@ export async function POST(request: Request) {
     const [balance, services] = await Promise.all([provider.getBalance(), provider.getServices()]);
     const latencyMs = Date.now() - started;
 
-    if (providerRow) {
-      // Health and balance are telemetry, not an audit trail. Retain a bounded
-      // history so repeated checks cannot grow these tables indefinitely.
-      const retentionCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      await db.delete(providerHealth).where(
-        lt(providerHealth.checkedAt, retentionCutoff),
-      );
-      await db.delete(providerBalanceSnapshots).where(
-        lt(providerBalanceSnapshots.checkedAt, retentionCutoff),
-      );
+    // Health and balance are telemetry, not an audit trail. Retain a bounded
+    // history so repeated checks cannot grow these tables indefinitely.
+    const retentionCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await db.delete(providerHealth).where(lt(providerHealth.checkedAt, retentionCutoff));
+    await db.delete(providerBalanceSnapshots).where(lt(providerBalanceSnapshots.checkedAt, retentionCutoff));
 
-      await db.insert(providerHealth).values({
-        providerId: providerRow.id,
-        status: "healthy",
-        responseTimeMs: latencyMs,
-        checkedAt: new Date(),
-      });
-      await db.insert(providerBalanceSnapshots).values({
-        providerId: providerRow.id,
-        balance: String(balance.balance),
-        currency: balance.currency,
-      });
-    }
+    // Slow but successful providers are degraded rather than healthy. This
+    // keeps Smart Auto from preferring a provider that is technically alive
+    // but consistently too slow.
+    const healthStatus = latencyMs >= 8000 ? "degraded" : "healthy";
+    await db.insert(providerHealth).values({
+      providerId: providerRow.id,
+      status: healthStatus,
+      responseTimeMs: latencyMs,
+      checkedAt: new Date(),
+    });
+    await db.insert(providerBalanceSnapshots).values({
+      providerId: providerRow.id,
+      balance: String(balance.balance),
+      currency: balance.currency,
+    });
 
     return NextResponse.json(
       {
         ok: true,
-        status: "healthy",
+        status: healthStatus,
         latencyMs,
         balance: balance.balance,
         currency: balance.currency,
@@ -118,6 +116,16 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Provider health check failed:", error);
+    try {
+      await db.insert(providerHealth).values({
+        providerId: providerRow.id,
+        status: "down",
+        responseTimeMs: null,
+        checkedAt: new Date(),
+      });
+    } catch (telemetryError) {
+      console.error("Provider health failure telemetry failed:", telemetryError);
+    }
     return NextResponse.json(
       { ok: false, status: "down", error: "Provider health check failed." },
       { status: 502, headers: { "Cache-Control": "no-store, max-age=0" } },
