@@ -58,8 +58,15 @@ export default function Dashboard(){
       </Link>
     </header>
 
-    <section className="mt-4 overflow-hidden rounded-2xl shadow-[0_12px_35px_rgba(6,45,33,.12)]">
-      <img src="/social-hero.svg" alt="GeekyAce Social Hub — all your social growth in one place" className="block h-auto w-full" />
+    <section className="relative mt-4 h-[154px] overflow-hidden rounded-2xl bg-[#063b2b] shadow-[0_12px_35px_rgba(6,45,33,.12)] sm:h-[154px]">
+      <img src="/social-hero.svg" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+      <div className="relative z-10 flex h-full items-center px-8 sm:px-10">
+        <div>
+          <p className="text-[18px] font-medium leading-none text-white/95">Welcome to</p>
+          <h2 className="mt-1 text-[32px] font-extrabold leading-none tracking-[-.045em] text-white sm:text-[36px]">GeekyAce <span className="text-[#19e6e2]">Social Hub</span></h2>
+          <p className="mt-3 text-[15px] font-medium text-white/90">All Your Social Growth in One Place</p>
+        </div>
+      </div>
     </section>
 
     <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
