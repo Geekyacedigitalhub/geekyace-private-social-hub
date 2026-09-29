@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import "./globals.css";
-import { LayoutDashboard, ShoppingCart, Package, Boxes, ServerCog, RefreshCw, BarChart3, ScrollText, Settings, ShieldCheck, Zap } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, Boxes, ServerCog, RefreshCw, BarChart3, ScrollText, Settings, ShieldCheck, Zap, WalletCards, ReceiptText, KeyRound } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "GeekyAce Social Hub",
@@ -18,7 +18,7 @@ type NavGroup = { label: string; items: readonly NavItem[] };
 
 const groups: readonly NavGroup[] = [
   { label: "Workspace", items: [["Dashboard", "/", LayoutDashboard], ["New Order", "/new-order", ShoppingCart], ["Orders", "/orders", Package]] },
-  { label: "Operations", items: [["Services", "/services", Boxes], ["Providers", "/providers", ServerCog], ["Refills", "/refills", RefreshCw], ["Analytics", "/analytics", BarChart3]] },
+  { label: "Operations", items: [["Services", "/services", Boxes], ["Providers", "/providers", ServerCog], ["Wallet", "/settings", WalletCards], ["Transactions", "/orders", ReceiptText], ["API Keys", "/settings", KeyRound], ["Analytics", "/analytics", BarChart3], ["Refills", "/refills", RefreshCw]] },
   { label: "System", items: [["Logs", "/logs", ScrollText], ["Settings", "/settings", Settings]] },
 ];
 
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <div className="min-h-screen bg-[#06100c] text-slate-100 lg:flex">
-          <aside className="hidden w-[252px] shrink-0 border-r border-white/[0.07] bg-[#07110d] lg:block">
+          <aside className="hidden w-[313px] shrink-0 border-r border-white/[0.07] bg-[#07110d] lg:block">
             <div className="sticky top-0 flex h-screen flex-col px-4 py-5">
               <Link href="/" className="mb-6 flex items-center gap-3 px-2">
                 <img src="/mark.svg" alt="GeekyAce Social Hub" className="h-10 w-10 rounded-xl" />
