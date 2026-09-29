@@ -48,3 +48,6 @@ body {
 .gx-page input::placeholder,.gx-page textarea::placeholder { color:#94a3b8; }
 .gx-page select option { background:#fff; color:#0f172a; }
 .gx-page .divide-white\/\[0\.045\] > :not([hidden]) ~ :not([hidden]) { border-color:#eef2f7 !important; }
+
+.gx-page .bg-emerald-500.text-white,.gx-page .bg-emerald-600.text-white,.gx-page .bg-emerald-400.text-white { color:#fff !important; }
+.gx-page .bg-rose-500.text-white,.gx-page .bg-rose-600.text-white { color:#fff !important; }
