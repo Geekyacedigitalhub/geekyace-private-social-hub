@@ -117,15 +117,17 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Provider health check failed:", error);
-    try {
-      await db.insert(providerHealth).values({
-        providerId: providerRow.id,
-        status: "down",
+    if (providerRow) {
+      try {
+        await db.insert(providerHealth).values({
+          providerId: providerRow.id,
+          status: "down",
         responseTimeMs: null,
-        checkedAt: new Date(),
-      });
-    } catch (telemetryError) {
-      console.error("Provider health failure telemetry failed:", telemetryError);
+          checkedAt: new Date(),
+        });
+      } catch (telemetryError) {
+        console.error("Provider health failure telemetry failed:", telemetryError);
+      }
     }
     return NextResponse.json(
       { ok: false, status: "down", error: "Provider health check failed." },
