@@ -57,3 +57,5 @@ export default function WalletPage(){
    </aside>
   </div>
  </div></main>
+
+}
