@@ -15,5 +15,5 @@
  <g transform="translate(1260 66)"><circle r="43" fill="#080808"/><path fill="#fff" d="m-20-17 13 19 18-19h9L-2 7l22 31H9L-6 17l-19 21h-9L-11 9l-22-32z" transform="scale(.75)"/></g>
  <g transform="translate(1320 140)"><circle r="42" fill="#229ed9"/><path fill="#fff" d="m-23-2 46-18-12 43-13-14-13 9z"/><path fill="#229ed9" d="m-15 5 13 7 7-18z"/></g>
 </g>
-<path d="M620 248 930 108l-70-28 335-10 15 142-58-59-303 126z" fill="url(#a)" opacity=".9"/>
+<path d="M760 248 1010 128l-62-25 280-8 12 120-50-50-250 105z" fill="url(#a)" opacity=".9"/>
 </svg>
