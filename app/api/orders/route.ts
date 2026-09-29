@@ -273,7 +273,95 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, order: updated });
     } catch (error) {
       if (error instanceof ProviderRejectedError) {
-        const message = error.message || "Provider rejected the order.";
+        const initialMessage = error.message || "Provider rejected the order.";
+
+        // A provider rejection is an explicit refusal, so Smart Auto can
+        // safely try another already-validated compatible provider. We never
+        // fail over after an uncertain/network error because that could create
+        // a duplicate upstream order.
+        if (!requestedProviderId) {
+          const alternatives = eligible.filter((candidate) => candidate.provider.id !== mapping.provider.id);
+          for (const alternative of alternatives) {
+            try {
+              const fallbackProvider = createProviderAdapter({
+                name: alternative.provider.name,
+                baseUrl: alternative.provider.baseUrl,
+              });
+              const fallbackCreated = await fallbackProvider.createOrder({
+                serviceId: alternative.mapping.externalServiceId,
+                target,
+                quantity,
+                fields,
+                omitQuantity: requirements.omitQuantity,
+              });
+
+              try {
+                await db.insert(orderEvents).values({
+                  orderId: order.id,
+                  eventType: "provider_failover",
+                  message: "Smart Auto switched to a compatible provider after the selected provider rejected the order.",
+                  payload: {
+                    rejectedProviderId: mapping.provider.id,
+                    fallbackProviderId: alternative.provider.id,
+                    fallbackProviderOrderId: fallbackCreated.providerOrderId,
+                    rejectionReason: initialMessage,
+                  },
+                });
+              } catch (eventError) {
+                console.error("Provider failover event logging failed:", eventError);
+              }
+
+              const fallbackUpdated = await db.update(orders).set({
+                providerId: alternative.provider.id,
+                status: "processing",
+                providerOrderId: fallbackCreated.providerOrderId,
+                errorMessage: null,
+                updatedAt: new Date(),
+              }).where(eq(orders.id, order.id)).returning();
+
+              if (fallbackUpdated.at(0)) {
+                return NextResponse.json({
+                  ok: true,
+                  order: fallbackUpdated[0],
+                  failover: true,
+                  previousProviderId: mapping.provider.id,
+                });
+              }
+
+              return NextResponse.json(
+                { ok: false, error: "Order was submitted through a fallback provider, but local status synchronization is pending. Do not resubmit this order." },
+                { status: 503 },
+              );
+            } catch (fallbackError) {
+              if (fallbackError instanceof ProviderRejectedError) continue;
+
+              // The fallback outcome is uncertain, so preserve the order as
+              // pending rather than risking another upstream submission.
+              await db.update(orders).set({
+                providerId: alternative.provider.id,
+                status: "pending",
+                errorMessage: "Fallback provider submission outcome is uncertain; reconciliation is required.",
+                updatedAt: new Date(),
+              }).where(eq(orders.id, order.id));
+              try {
+                await db.insert(orderEvents).values({
+                  orderId: order.id,
+                  eventType: "provider_failover_uncertain",
+                  message: "Fallback provider submission outcome could not be confirmed. Order was left pending.",
+                  payload: { fallbackProviderId: alternative.provider.id },
+                });
+              } catch (eventError) {
+                console.error("Provider failover event logging failed:", eventError);
+              }
+              return NextResponse.json(
+                { ok: false, pending: true, error: "Provider rejected the order and fallback submission could not be confirmed. Do not resubmit this order.", order },
+                { status: 503 },
+              );
+            }
+          }
+        }
+
+        const message = alternativesMessage(initialMessage, eligible, mapping.provider.id);
         await db.update(orders).set({
           status: "failed",
           errorMessage: message,
@@ -283,8 +371,8 @@ export async function POST(request: Request) {
           await db.insert(orderEvents).values({
             orderId: order.id,
             eventType: "provider_rejected",
-            message: "Provider rejected the order.",
-            payload: { reason: message },
+            message: "Provider rejected the order; no compatible fallback provider accepted it.",
+            payload: { reason: initialMessage },
           });
         } catch (eventError) {
           console.error("Provider rejection event logging failed:", eventError);
@@ -321,6 +409,13 @@ export async function POST(request: Request) {
     console.error("Order creation failed:", error);
     return NextResponse.json({ ok: false, error: "Unable to create order." }, { status: 500 });
   }
+}
+
+function alternativesMessage(initialMessage: string, eligible: Array<{ provider: typeof providers.$inferSelect }>, selectedProviderId: string) {
+  const attempted = eligible.filter((candidate) => candidate.provider.id !== selectedProviderId).length;
+  return attempted > 0
+    ? `${initialMessage} No compatible fallback provider accepted this order.`
+    : initialMessage;
 }
 
 function getOrderRequirements(metadata: unknown) {
