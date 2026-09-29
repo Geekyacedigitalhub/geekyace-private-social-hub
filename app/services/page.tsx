@@ -107,7 +107,7 @@ export default function ServicesPage() {
   }, [capabilityFilter, platformFilter, query, rows, typeFilter]);
 
   return (
-    <main className="min-h-screen bg-[#06100c]">
+    <main className="gx-page min-h-screen bg-[#f7f9f8]">
       <div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10">
         <header>
           <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-emerald-400"><Layers3 size={13}/> Catalog</div>
