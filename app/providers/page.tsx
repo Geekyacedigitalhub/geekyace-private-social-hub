@@ -186,7 +186,7 @@ export default function ProvidersPage() {
   const enabledCount = providers.filter((provider) => provider.enabled).length;
 
   return (
-    <main className="min-h-screen bg-[#06100c]">
+    <main className="gx-page min-h-screen bg-[#f7f9f8]">
       <div className="mx-auto max-w-7xl p-5 sm:p-8 xl:p-10">
         <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
