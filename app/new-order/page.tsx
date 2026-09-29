@@ -260,7 +260,7 @@ export default function NewOrderPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#06100c]">
+    <main className="gx-page min-h-screen bg-[#f7f9f8]">
       <div className="mx-auto max-w-6xl p-5 sm:p-8 xl:p-10">
         <Link href="/" className="text-xs font-semibold text-slate-500 hover:text-emerald-300">← Command center</Link>
         <header className="mt-6">
