@@ -15,7 +15,7 @@ type NavGroup = { label: string; items: readonly NavItem[] };
 
 const groups: readonly NavGroup[] = [
   { label: "Workspace", items: [["Dashboard", "/", LayoutDashboard], ["New Order", "/new-order", ShoppingCart], ["Orders", "/orders", Package]] },
-  { label: "Operations", items: [["Services", "/services", Boxes], ["Providers", "/providers", ServerCog], ["Wallet", "/wallet", WalletCards], ["Transactions", "/transactions", ReceiptText], ["API Keys", "/settings", KeyRound], ["Analytics", "/analytics", BarChart3], ["Refills", "/refills", RefreshCw]] },
+  { label: "Operations", items: [["Services", "/services", Boxes], ["Providers", "/providers", ServerCog], ["Wallet", "/wallet", WalletCards], ["Transactions", "/transactions", ReceiptText], ["API Keys", "/keys", KeyRound], ["Analytics", "/analytics", BarChart3], ["Refills", "/refills", RefreshCw]] },
   { label: "System", items: [["Logs", "/logs", ScrollText], ["Settings", "/settings", Settings]] },
 ];
 
