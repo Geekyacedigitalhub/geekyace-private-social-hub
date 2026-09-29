@@ -39,12 +39,12 @@ export default function Dashboard(){
   {label:"Total Orders",value:stats?.totalOrders,icon:Package,iconClass:"text-sky-300",bg:"bg-sky-400/10"},
   {label:"Completed",value:stats?.completedOrders,icon:CheckCircle2,iconClass:"text-emerald-300",bg:"bg-emerald-400/10"},
   {label:"Processing",value:stats?.activeOrders,icon:Activity,iconClass:"text-amber-300",bg:"bg-amber-400/10"},
-  {label:"Cancelled / Failed",value:stats?.failedOrders,icon:XCircle,iconClass:"text-rose-300",bg:"bg-rose-400/10"},
+  {label:"Cancelled",value:stats?.failedOrders,icon:XCircle,iconClass:"text-rose-300",bg:"bg-rose-400/10"},
  ];
 
  return <main className="min-h-screen bg-[#f7f9f8] text-slate-900">
   <div className="min-h-screen">
-   <div className="mx-auto max-w-[1500px] p-4 sm:p-6 xl:p-8">
+   <div className="mx-auto max-w-none p-4 sm:p-5">
 
     <header className="flex items-center justify-end gap-2">
       <button onClick={()=>void load()} disabled={loading} className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 sm:inline-flex">
