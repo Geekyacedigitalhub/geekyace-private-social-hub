@@ -1,19 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 260" role="img" aria-label="Social media growth banner">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 260">
 <defs>
- <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06251b"/><stop offset=".5" stop-color="#087243"/><stop offset="1" stop-color="#06251b"/></linearGradient>
- <linearGradient id="arrow" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#19e879"/><stop offset="1" stop-color="#8cff4f"/></linearGradient>
- <filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#03251b"/><stop offset=".55" stop-color="#087846"/><stop offset="1" stop-color="#075d39"/></linearGradient>
+ <linearGradient id="a" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#18df79"/><stop offset="1" stop-color="#8cff4e"/></linearGradient>
+ <filter id="s"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-opacity=".32"/></filter>
 </defs>
-<rect width="1400" height="260" rx="22" fill="url(#bg)"/>
-<path d="M0 230 430 40 780 220 1120 20 1400 170V260H0Z" fill="#0ca35b" opacity=".13"/>
-<path d="M260 260 620 0h160L460 260Z" fill="#0edb76" opacity=".09"/>
-<g filter="url(#glow)">
- <circle cx="830" cy="92" r="43" fill="#111827"/><text x="830" y="108" text-anchor="middle" font-size="52" fill="#fff">♪</text>
- <circle cx="950" cy="150" r="42" fill="#ef3340"/><path d="M933 137l35 21-35 21z" fill="#fff"/>
- <circle cx="1055" cy="83" r="43" fill="#e1306c"/><rect x="1031" y="59" width="48" height="48" rx="14" fill="none" stroke="#fff" stroke-width="6"/><circle cx="1055" cy="83" r="10" fill="none" stroke="#fff" stroke-width="5"/><circle cx="1070" cy="68" r="4" fill="#fff"/>
- <circle cx="1110" cy="174" r="44" fill="#1877f2"/><text x="1110" y="194" text-anchor="middle" font-family="Arial" font-size="58" font-weight="700" fill="#fff">f</text>
- <circle cx="1170" cy="83" r="44" fill="#111"/><text x="1170" y="101" text-anchor="middle" font-family="Arial" font-size="38" font-weight="700" fill="#fff">𝕏</text>
- <circle cx="1250" cy="142" r="40" fill="#229ed9"/><path d="m1228 140 45-18-12 42-12-14-12 8z" fill="#fff"/>
+<rect width="1400" height="260" rx="22" fill="url(#g)"/>
+<path d="M0 260 390 35 760 260 1110 0 1400 150v110z" fill="#10b96a" opacity=".12"/>
+<path d="M420 260 770 0h180L580 260z" fill="#22e77d" opacity=".08"/>
+<g filter="url(#s)">
+ <g transform="translate(925 64)"><circle r="44" fill="#111827"/><path fill="#fff" d="M-9-22v31c0 11-16 14-22 5 5 6 16 2 16-5v-31zM-15-22h16c3 7 7 11 15 13v10c-8-1-15-4-21-10v-13z"/></g>
+ <g transform="translate(1045 135)"><circle r="43" fill="#ef3340"/><rect x="-22" y="-22" width="44" height="44" rx="10" fill="none" stroke="#fff" stroke-width="6"/><path fill="#fff" d="M-7-10h14l8 9v15h-30V-1z"/><circle cx="0" cy="4" r="7" fill="#ef3340"/></g>
+ <g transform="translate(1160 67)"><circle r="43" fill="#e1306c"/><rect x="-22" y="-22" width="44" height="44" rx="12" fill="none" stroke="#fff" stroke-width="6"/><circle r="10" fill="none" stroke="#fff" stroke-width="5"/><circle cx="14" cy="-14" r="4" fill="#fff"/></g>
+ <g transform="translate(1200 176)"><circle r="43" fill="#1877f2"/><path fill="#fff" d="M7-25H-2c-7 0-12 5-12 13v8h-9v12h9v30h13v-30H9l2-12H-1v-7c0-3 2-4 5-4h6z"/></g>
+ <g transform="translate(1260 66)"><circle r="43" fill="#080808"/><path fill="#fff" d="m-20-17 13 19 18-19h9L-2 7l22 31H9L-6 17l-19 21h-9L-11 9l-22-32z" transform="scale(.75)"/></g>
+ <g transform="translate(1320 140)"><circle r="42" fill="#229ed9"/><path fill="#fff" d="m-23-2 46-18-12 43-13-14-13 9z"/><path fill="#229ed9" d="m-15 5 13 7 7-18z"/></g>
 </g>
-<path d="M610 235 900 110l-70-30 320-8 14 135-55-57-300 125z" fill="url(#arrow)" opacity=".95"/>
+<path d="M620 248 930 108l-70-28 335-10 15 142-58-59-303 126z" fill="url(#a)" opacity=".9"/>
 </svg>
