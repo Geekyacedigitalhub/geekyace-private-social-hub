@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Activity, ArrowUpRight, BarChart3, CheckCircle2, ClipboardList, Package, Plus, RefreshCw, ShieldCheck, Sparkles, XCircle, Zap, ShoppingCart } from "lucide-react";
+import { Activity, ArrowUpRight, BarChart3, CheckCircle2, ClipboardList, Package, Plus, RefreshCw, ShieldCheck, Sparkles, XCircle, Zap, ShoppingCart, WalletCards } from "lucide-react";
 
 type Stats={totalOrders:number;activeOrders:number;completedOrders:number;failedOrders:number;refillRecords:number;events:number;totalQuantity:number};
 type RecentOrder={id:string;target:string;quantity:number;status:string;completedQuantity:number|null;createdAt:string};
@@ -46,32 +46,20 @@ export default function Dashboard(){
   <div className="min-h-screen">
    <div className="mx-auto max-w-[1500px] p-4 sm:p-6 xl:p-8">
 
-    <header className="flex items-center justify-between gap-4">
-      <div>
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-emerald-600"><Sparkles size={13}/> Social operations</div>
-        <h1 className="mt-1 text-2xl font-bold tracking-[-.04em] text-slate-900 sm:text-3xl">Welcome to <span className="text-emerald-600">GeekyAce Social Hub</span></h1>
-        <p className="mt-1 text-xs text-slate-500">All your social service operations in one place.</p>
+    <header className="flex items-center justify-end gap-2">
+      <button onClick={()=>void load()} disabled={loading} className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 sm:inline-flex">
+        <RefreshCw size={14} className={loading?"animate-spin":""}/> Refresh
+      </button>
+      <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm">
+        <WalletCards size={15} className="text-slate-500"/> $0.00
       </div>
-      <div className="hidden items-center gap-2 sm:flex">
-        <button onClick={()=>void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50">
-          <RefreshCw size={14} className={loading?"animate-spin":""}/> Refresh
-        </button>
-        <Link href="/new-order" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-600">
-          <Plus size={15}/> New Order
-        </Link>
-      </div>
+      <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-600">
+        + Add Funds
+      </Link>
     </header>
 
-    <section className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-r from-[#062d21] via-[#075b3c] to-[#0a7b50] px-6 py-7 text-white shadow-lg shadow-emerald-900/10 sm:px-8">
-      <div className="relative">
-        <div className="max-w-xl">
-          <p className="text-sm text-emerald-100">Welcome to</p>
-          <h2 className="mt-1 text-3xl font-extrabold tracking-[-.04em] sm:text-4xl">GeekyAce <span className="text-emerald-300">Social Hub</span></h2>
-          <p className="mt-2 text-sm text-emerald-50/80">All Your Social Growth in One Place</p>
-        </div>
-        <div className="pointer-events-none absolute -right-10 -top-20 hidden h-64 w-64 rounded-full border-[28px] border-emerald-300/10 sm:block" />
-        <div className="pointer-events-none absolute right-12 bottom-[-70px] hidden h-44 w-44 rotate-45 border-[30px] border-emerald-300/10 sm:block" />
-      </div>
+    <section className="mt-4 overflow-hidden rounded-2xl shadow-[0_12px_35px_rgba(6,45,33,.12)]">
+      <img src="/social-hero.svg" alt="GeekyAce Social Hub — all your social growth in one place" className="block h-auto w-full" />
     </section>
 
     <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
