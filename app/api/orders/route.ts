@@ -174,10 +174,19 @@ export async function POST(request: Request) {
     const latestHealth = new Map<string, typeof healthRows[number]>();
     for (const row of healthRows) if (!latestHealth.has(row.providerId)) latestHealth.set(row.providerId, row);
     const healthRank: Record<string, number> = { healthy: 0, degraded: 1, unknown: 2, down: 3 };
+  const healthFreshnessMs = 30 * 60 * 1000;
+  const effectiveHealth = (providerId: string) => {
+    const health = latestHealth.get(providerId);
+    if (!health?.checkedAt || Date.now() - new Date(health.checkedAt).getTime() > healthFreshnessMs) return "unknown";
+    return health.status;
+  };
     eligible.sort((a, b) => {
       const ah = latestHealth.get(a.provider.id);
       const bh = latestHealth.get(b.provider.id);
-      const hr = (healthRank[ah?.status ?? "unknown"] ?? 2) - (healthRank[bh?.status ?? "unknown"] ?? 2);
+      const now = Date.now();
+      const ahStatus = ah?.checkedAt && now - new Date(ah.checkedAt).getTime() <= healthFreshnessMs ? ah.status : "unknown";
+      const bhStatus = bh?.checkedAt && now - new Date(bh.checkedAt).getTime() <= healthFreshnessMs ? bh.status : "unknown";
+      const hr = (healthRank[ahStatus] ?? 2) - (healthRank[bhStatus] ?? 2);
       if (hr !== 0) return hr;
       const ap = a.mapping.pricePerThousand == null ? Number.POSITIVE_INFINITY : Number(a.mapping.pricePerThousand);
       const bp = b.mapping.pricePerThousand == null ? Number.POSITIVE_INFINITY : Number(b.mapping.pricePerThousand);
