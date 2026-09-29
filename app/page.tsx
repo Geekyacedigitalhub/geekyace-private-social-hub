@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Activity, ArrowUpRight, BarChart3, CheckCircle2, ClipboardList, Package, Plus, RefreshCw, ShieldCheck, Sparkles, XCircle, Zap, ShoppingCart, WalletCards } from "lucide-react";
+import { Activity, ArrowUpRight, BarChart3, CheckCircle2, ClipboardList, Package, Plus, RefreshCw, ShieldCheck, Sparkles, XCircle, Zap, ShoppingCart, WalletCards, Bell, UserRound, ChevronDown } from "lucide-react";
 
 type Stats={totalOrders:number;activeOrders:number;completedOrders:number;failedOrders:number;refillRecords:number;events:number;totalQuantity:number};
 type RecentOrder={id:string;target:string;quantity:number;status:string;completedQuantity:number|null;createdAt:string};
@@ -46,16 +46,29 @@ export default function Dashboard(){
   <div className="min-h-screen">
    <div className="mx-auto max-w-none p-4 sm:p-5">
 
-    <header className="flex items-center justify-end gap-2">
-      <button onClick={()=>void load()} disabled={loading} className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 sm:inline-flex">
-        <RefreshCw size={14} className={loading?"animate-spin":""}/> Refresh
-      </button>
-      <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm">
-        <WalletCards size={15} className="text-slate-500"/> $0.00
+    <header className="flex h-12 items-center justify-between gap-3">
+      <div className="hidden items-center gap-2 sm:flex">
+        <span className="text-xs font-semibold text-slate-400">Dashboard</span>
+        <span className="text-slate-300">/</span>
+        <span className="text-xs font-medium text-slate-500">Overview</span>
       </div>
-      <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-600">
-        + Add Funds
-      </Link>
+      <div className="ml-auto flex items-center gap-2">
+        <button onClick={()=>void load()} disabled={loading} aria-label="Refresh dashboard" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 disabled:opacity-50">
+          <RefreshCw size={15} className={loading?"animate-spin":""}/>
+        </button>
+        <button aria-label="Notifications" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50"><Bell size={16}/></button>
+        <div className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm sm:flex">
+          <div className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-50"><UserRound size={14} className="text-emerald-600"/></div>
+          <div className="leading-tight"><p className="text-[10px] font-bold text-slate-700">Owner</p><p className="text-[9px] text-slate-400">Admin</p></div>
+          <ChevronDown size={13} className="text-slate-400"/>
+        </div>
+        <div className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 shadow-sm">
+          <WalletCards size={15} className="text-emerald-600"/> $0.00
+        </div>
+        <Link href="/settings" className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-4 text-xs font-bold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-600">
+          <Plus size={14}/> Add Funds
+        </Link>
+      </div>
     </header>
 
     <section className="relative mt-4 h-[154px] overflow-hidden rounded-2xl bg-[#063b2b] shadow-[0_12px_35px_rgba(6,45,33,.12)] sm:h-[154px]">
@@ -70,15 +83,16 @@ export default function Dashboard(){
     </section>
 
     <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {metrics.map(({label,value,icon:Icon,iconClass,bg})=><div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className={"grid h-11 w-11 place-items-center rounded-xl "+bg}><Icon size={20} className={iconClass}/></div>
-          <div><p className="text-[11px] font-medium text-slate-500">{label}</p><p className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">{value?.toLocaleString()??"—"}</p></div>
+      {metrics.map(({label,value,icon:Icon,iconClass,bg},i)=><div key={label} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_3px_14px_rgba(15,23,42,.045)]">
+        <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-50/70 blur-2xl"/>
+        <div className="relative flex items-center justify-between">
+          <div><p className="text-[11px] font-semibold text-slate-500">{label}</p><p className="mt-1 text-[26px] font-extrabold tracking-[-.03em] text-slate-900">{value?.toLocaleString()??"—"}</p><p className="mt-1 text-[9px] font-medium text-slate-400">{i===0?"All time":i===1?"Successfully fulfilled":i===2?"Currently active":"Requires attention"}</p></div>
+          <div className={"grid h-11 w-11 place-items-center rounded-xl "+bg}><Icon size={19} className={iconClass}/></div>
         </div>
       </div>)}
     </section>
 
-    <section className="mt-4 grid gap-4 xl:grid-cols-[1.5fr_.8fr]">
+    <section className="mt-4 grid gap-4 xl:grid-cols-[1.55fr_.8fr]">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between">
           <div><div className="flex items-center gap-2 text-emerald-600"><ShoppingCart size={16}/><span className="text-xs font-bold uppercase tracking-[.16em]">Quick Order</span></div><h2 className="mt-1 text-lg font-bold text-slate-900">Place a new order</h2><p className="mt-1 text-xs text-slate-500">Use the full New Order workspace for category, provider and service selection.</p></div>
